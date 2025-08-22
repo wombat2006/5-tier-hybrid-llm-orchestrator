@@ -1,0 +1,15 @@
+# Ansible Vault 暗号化ファイル例
+# 実際の使用時は以下コマンドで暗号化してください:
+# ansible-vault create deploy/vault.yml
+
+# APIキー設定（実際の値に置き換えて暗号化）
+vault_openai_api_key: "sk-your-openai-api-key-here"
+vault_anthropic_api_key: "sk-ant-your-anthropic-api-key-here"
+vault_google_api_key: "your-google-gemini-api-key-here"
+
+# 管理者連絡先
+admin_contact: "system-admin@company.com"
+
+# 追加のセキュリティ設定
+security_monitoring_enabled: true
+audit_log_retention_days: 90

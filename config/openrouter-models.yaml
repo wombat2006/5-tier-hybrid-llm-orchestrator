@@ -1,0 +1,225 @@
+# OpenRouter利用可能モデル設定
+# 拡張性を考慮した設計で、新しいモデルを簡単に追加可能
+# 2024年時点での主要モデル一覧
+
+# ===========================================
+# Tier 0: コーディング特化モデル (最高優先度)
+# ===========================================
+coding_models:
+  qwen3_coder:
+    openrouter_id: "qwen/qwen-3-coder-32b-instruct"
+    name: "Qwen3-Coder 32B"
+    provider_family: "qwen"
+    tier: 0
+    pricing:
+      prompt: 1.8      # per 1M tokens
+      completion: 1.8  # per 1M tokens
+    context_length: 262144
+    capabilities: [coding, debugging, code_review, refactoring]
+    specialties: [python, javascript, typescript, rust, go, java, cpp]
+    description: "コーディング特化、262K長文脈対応"
+
+  qwen3_coder_free:
+    openrouter_id: "qwen/qwen-3-coder-32b-instruct:free"
+    name: "Qwen3-Coder 32B (Free)"
+    provider_family: "qwen"
+    tier: 0
+    pricing:
+      prompt: 0        # Free tier
+      completion: 0    # Free tier
+    context_length: 262144
+    capabilities: [coding, debugging, code_review]
+    rate_limits: {requests_per_minute: 20, daily_limit: 200}
+    description: "無料版コーディング特化"
+
+
+# ===========================================
+# Tier 1: 汎用・高速モデル
+# ===========================================
+general_models:
+  gemini_flash:
+    openrouter_id: "google/gemini-flash-1.5"
+    name: "Gemini 1.5 Flash"
+    provider_family: "google"
+    tier: 1
+    pricing:
+      prompt: 0.075
+      completion: 0.30
+    context_length: 1000000
+    capabilities: [general_inquiry, summarization, translation, analysis]
+    description: "高速汎用モデル、100万トークン対応"
+
+  claude_haiku:
+    openrouter_id: "anthropic/claude-3-haiku"
+    name: "Claude 3 Haiku"
+    provider_family: "anthropic"
+    tier: 1
+    pricing:
+      prompt: 0.25
+      completion: 1.25
+    context_length: 200000
+    capabilities: [general_tasks, quick_analysis, summarization]
+    description: "高速低コストClaude"
+
+  llama3_8b:
+    openrouter_id: "meta-llama/llama-3-8b-instruct"
+    name: "Llama 3 8B"
+    provider_family: "meta"
+    tier: 1
+    pricing:
+      prompt: 0.18
+      completion: 0.18
+    context_length: 8192
+    capabilities: [general_tasks, reasoning, conversation]
+    description: "オープンソース高性能モデル"
+
+# ===========================================
+# Tier 2: 高品質推論モデル
+# ===========================================
+reasoning_models:
+  claude_sonnet:
+    openrouter_id: "anthropic/claude-3.5-sonnet"
+    name: "Claude 3.5 Sonnet"
+    provider_family: "anthropic"
+    tier: 2
+    pricing:
+      prompt: 3.0
+      completion: 15.0
+    context_length: 200000
+    capabilities: [complex_reasoning, analysis, writing, coding]
+    description: "高品質推論・分析モデル"
+
+  gemini_pro:
+    openrouter_id: "google/gemini-pro-1.5"
+    name: "Gemini 1.5 Pro"
+    provider_family: "google"
+    tier: 2
+    pricing:
+      prompt: 1.25
+      completion: 5.0
+    context_length: 2000000
+    capabilities: [complex_reasoning, multimodal, analysis]
+    description: "高性能マルチモーダルモデル"
+
+
+# ===========================================
+# Tier 3: 最高品質・専門モデル
+# ===========================================
+premium_models:
+  gpt4o:
+    openrouter_id: "openai/gpt-4o"
+    name: "GPT-4o"
+    provider_family: "openai"
+    tier: 3
+    pricing:
+      prompt: 2.5
+      completion: 10.0
+    context_length: 128000
+    capabilities: [premium_analysis, strategic_planning, complex_reasoning]
+    description: "OpenAI最高品質モデル"
+
+  claude_opus:
+    openrouter_id: "anthropic/claude-3-opus"
+    name: "Claude 3 Opus"
+    provider_family: "anthropic"
+    tier: 3
+    pricing:
+      prompt: 15.0
+      completion: 75.0
+    context_length: 200000
+    capabilities: [premium_analysis, creative_writing, complex_reasoning]
+    description: "Claude最高品質モデル"
+
+  o1_preview:
+    openrouter_id: "openai/o1-preview"
+    name: "GPT-o1 Preview"
+    provider_family: "openai"
+    tier: 3
+    pricing:
+      prompt: 15.0
+      completion: 60.0
+    context_length: 32768
+    capabilities: [advanced_reasoning, mathematics, complex_problem_solving]
+    description: "高度推論特化モデル"
+
+# ===========================================
+# 特殊用途モデル
+# ===========================================
+specialized_models:
+  # 数学特化
+  qwen_math:
+    openrouter_id: "qwen/qwen-2.5-math-72b-instruct"
+    name: "Qwen 2.5 Math"
+    provider_family: "qwen"
+    tier: 2
+    pricing:
+      prompt: 0.4
+      completion: 0.4
+    context_length: 4096
+    capabilities: [mathematics, problem_solving, calculations]
+    description: "数学問題特化"
+
+  # 創作特化
+  mythomax:
+    openrouter_id: "gryphe/mythomax-l2-13b"
+    name: "MythoMax L2 13B"
+    provider_family: "gryphe"
+    tier: 1
+    pricing:
+      prompt: 0.18
+      completion: 0.18
+    context_length: 4096
+    capabilities: [creative_writing, storytelling, roleplay]
+    description: "創作・ストーリーテリング特化"
+
+# ===========================================
+# 無料モデル (開発・テスト用)
+# ===========================================
+free_models:
+
+  llama3_free:
+    openrouter_id: "meta-llama/llama-3-8b-instruct:free"
+    name: "Llama 3 8B (Free)"
+    provider_family: "meta"
+    tier: 1
+    pricing:
+      prompt: 0
+      completion: 0
+    context_length: 8192
+    rate_limits: {requests_per_minute: 20, daily_limit: 200}
+    capabilities: [general_tasks, conversation]
+    description: "無料汎用モデル"
+
+# ===========================================
+# プリセット設定
+# ===========================================
+presets:
+  # コスト重視プリセット
+  cost_optimized:
+    tier0: "qwen3_coder_free"
+    tier1: "llama3_free"
+    tier2: "claude_haiku"
+    tier3: "claude_sonnet"
+
+  # 性能重視プリセット
+  performance_optimized:
+    tier0: "qwen3_coder"
+    tier1: "gemini_flash"
+    tier2: "claude_sonnet"
+    tier3: "gpt4o"
+
+  # バランス型プリセット
+  balanced:
+    tier0: "qwen3_coder"
+    tier1: "llama3_8b"
+    tier2: "gemini_pro"
+    tier3: "claude_sonnet"
+
+# ===========================================
+# デフォルト設定
+# ===========================================
+defaults:
+  timeout_ms: 30000
+  retry_count: 3
+  fallback_enabled: true
+  cost_tracking: true

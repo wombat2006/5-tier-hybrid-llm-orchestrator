@@ -1,0 +1,147 @@
+#!/bin/bash
+
+# {{ item.name }} 用 Claude Code ログイン時チェックスクリプト
+
+# カラーコード
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+echo -e "${BLUE}=========================================${NC}"
+echo -e "${GREEN}🤖 Claude Code マルチユーザー環境${NC}"
+echo -e "${BLUE}=========================================${NC}"
+echo -e "ユーザー: ${GREEN}{{ item.full_name }} ({{ item.name }})${NC}"
+echo -e "ホスト: ${YELLOW}$(hostname)${NC}"
+echo -e "日時: $(date '+%Y-%m-%d %H:%M:%S')"
+echo ""
+
+# Claude Code インストール確認
+echo -e "${BLUE}🔍 Claude Code 環境チェック中...${NC}"
+
+# NVM 確認
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+if command -v node >/dev/null 2>&1; then
+    echo -e "✅ Node.js: ${GREEN}$(node --version)${NC}"
+else
+    echo -e "❌ Node.js: ${RED}未インストール${NC}"
+fi
+
+if command -v npm >/dev/null 2>&1; then
+    echo -e "✅ npm: ${GREEN}$(npm --version)${NC}"
+else
+    echo -e "❌ npm: ${RED}未インストール${NC}"
+fi
+
+# Claude CLI 確認
+if command -v claude >/dev/null 2>&1 || command -v claude-cli >/dev/null 2>&1; then
+    echo -e "✅ Claude CLI: ${GREEN}インストール済み${NC}"
+else
+    echo -e "⚠️  Claude CLI: ${YELLOW}要インストール${NC}"
+fi
+
+# ~/.claude ディレクトリ確認
+if [ -d "$HOME/.claude" ]; then
+    echo -e "✅ ~/.claude: ${GREEN}設定済み${NC}"
+    if [ -f "$HOME/.claude/config.json" ]; then
+        echo -e "✅ 設定ファイル: ${GREEN}存在${NC}"
+    else
+        echo -e "⚠️  設定ファイル: ${YELLOW}未作成${NC}"
+    fi
+else
+    echo -e "❌ ~/.claude: ${RED}未設定${NC}"
+fi
+
+# LLMオーケストレーター接続確認
+echo ""
+echo -e "${BLUE}🔗 LLMオーケストレーター接続確認...${NC}"
+
+if command -v curl >/dev/null 2>&1; then
+    if curl -s --connect-timeout 5 "{{ llm_orchestrator_url }}/health" >/dev/null 2>&1; then
+        echo -e "✅ オーケストレーター: ${GREEN}接続OK${NC}"
+        
+        # システム情報取得
+        SYSTEM_INFO=$(curl -s "{{ llm_orchestrator_url }}/info" 2>/dev/null | jq -r '.data.available_models // "N/A"' 2>/dev/null || echo "N/A")
+        echo -e "📊 利用可能モデル: ${GREEN}${SYSTEM_INFO}${NC}"
+    else
+        echo -e "❌ オーケストレーター: ${RED}接続失敗${NC}"
+        echo -e "   URL: {{ llm_orchestrator_url }}"
+    fi
+else
+    echo -e "⚠️  curl未インストール: ${YELLOW}接続確認スキップ${NC}"
+fi
+
+# プロジェクトディレクトリ確認
+if [ -d "$HOME/projects" ]; then
+    PROJECT_COUNT=$(find "$HOME/projects" -mindepth 1 -maxdepth 1 -type d | wc -l)
+    echo -e "📁 プロジェクト: ${GREEN}${PROJECT_COUNT}個${NC}"
+else
+    echo -e "📁 プロジェクト: ${YELLOW}ディレクトリ未作成${NC}"
+fi
+
+# 環境変数確認
+echo ""
+echo -e "${BLUE}🔧 環境変数確認...${NC}"
+
+if [ -n "$CLAUDE_API_KEY" ]; then
+    # APIキーの最初の4文字と最後の4文字のみ表示
+    MASKED_KEY=$(echo "$CLAUDE_API_KEY" | sed 's/\(.\{4\}\).*\(.\{4\}\)/\1****\2/')
+    echo -e "🔑 CLAUDE_API_KEY: ${GREEN}設定済み (${MASKED_KEY})${NC}"
+else
+    echo -e "🔑 CLAUDE_API_KEY: ${RED}未設定${NC}"
+fi
+
+if [ -n "$LLM_ORCHESTRATOR_URL" ]; then
+    echo -e "🌐 LLM_ORCHESTRATOR_URL: ${GREEN}${LLM_ORCHESTRATOR_URL}${NC}"
+else
+    echo -e "🌐 LLM_ORCHESTRATOR_URL: ${RED}未設定${NC}"
+fi
+
+# 使用状況表示（簡易）
+echo ""
+echo -e "${BLUE}📈 使用状況 (概算)${NC}"
+echo -e "今日のログイン: ${GREEN}$(who | grep $(whoami) | wc -l)回${NC}"
+
+# CLAUDE.md ステータス簡易表示
+if [ -f "$HOME/.claude/CLAUDE.md" ]; then
+    CLAUDE_SIZE=$(wc -c < "$HOME/.claude/CLAUDE.md" 2>/dev/null || echo "0")
+    echo -e "CLAUDE.md: ${GREEN}${CLAUDE_SIZE}文字 (カスタマイズ済み)${NC}"
+else
+    echo -e "CLAUDE.md: ${YELLOW}未設定 (claude-sync で初期化)${NC}"
+fi
+
+# クイックヘルプ
+echo ""
+echo -e "${BLUE}🚀 クイックコマンド${NC}"
+echo -e "• システム状態確認: ${YELLOW}llm-status${NC}"
+echo -e "• システム情報取得: ${YELLOW}llm-info${NC}"
+echo -e "• Claude Code起動: ${YELLOW}claude${NC}"
+echo -e "• プロジェクト移動: ${YELLOW}cd ~/projects${NC}"
+echo -e "• 使用説明書: ${YELLOW}cat ~/Claude_Code_使用説明書.md${NC}"
+echo ""
+echo -e "${BLUE}📝 CLAUDE.md 管理${NC}"
+echo -e "• CLAUDE.md状態確認: ${YELLOW}claude-status${NC}"
+echo -e "• CLAUDE.md同期更新: ${YELLOW}claude-sync${NC}"
+echo -e "• カスタマイズ編集: ${YELLOW}claude-edit${NC}"
+echo -e "• バックアップ作成: ${YELLOW}claude-backup${NC}"
+
+echo ""
+echo -e "${BLUE}🔐 セキュリティ注意事項${NC}"
+echo -e "• APIキーは ${RED}絶対に他者と共有しないでください${NC}"
+echo -e "• 不審な活動発見時は即座に管理者へ報告"
+echo -e "• 全ての使用履歴は記録・監視されています"
+
+echo ""
+echo -e "${GREEN}💡 今すぐ開始: ${YELLOW}claude --help${NC} でヘルプを表示"
+echo -e "${BLUE}=========================================${NC}"
+echo ""
+
+# 警告やエラーがある場合の追加メッセージ
+if [ ! -d "$HOME/.claude" ] || [ ! -f "$HOME/.claude/config.json" ]; then
+    echo -e "${RED}⚠️  重要: Claude Code設定が不完全です${NC}"
+    echo -e "管理者に連絡して設定を完了させてください"
+    echo ""
+fi

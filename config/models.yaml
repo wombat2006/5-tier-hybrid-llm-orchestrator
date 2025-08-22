@@ -1,0 +1,210 @@
+# 5層ハイブリッドLLMシステム設定 (拡張版)
+# Tier0 (最優先) -> Tier3 (最高品質) の順序で定義
+# 注意: OpenRouterモデルは別途openrouter-models.yamlから動的に読み込まれます
+
+models:
+  # 従来モデル定義（後方互換性のため残存）
+  # OpenRouter Registry導入により、これらは補完的に使用されます
+  
+  # Tier 0: レガシーQwen3 Coder設定（非推奨：OpenRouter設定を優先）
+  legacy_qwen3_coder:
+    id: legacy_qwen3_coder
+    name: qwen/qwen-3-coder-32b-instruct
+    provider: openrouter
+    tier: 0
+    cost_per_1k_tokens:
+      input: 1.80   # per 1M tokens -> per 1K tokens
+      output: 1.80  # per 1M tokens -> per 1K tokens
+    latency_ms: 300
+    max_tokens: 4096  # 制限
+    capabilities:
+      - coding
+      - debugging
+      - code_review
+      - refactoring
+    languages:
+      - python
+      - javascript
+      - typescript
+      - java
+      - cpp
+      - rust
+      - go
+    priority_keywords:
+      - "コード"
+      - "関数"
+      - "実装"
+      - "プログラム"
+      - "スクリプト"
+      - "バグ修正"
+      - "リファクタリング"
+      - "code"
+      - "function"
+      - "implement"
+      - "script"
+      - "debug"
+    api_client: OpenRouterAPIClient
+
+  # Tier 1: Gemini Flash - 一般調査・検証・無料枠
+  gemini_flash:
+    id: gemini_flash
+    name: gemini-1.5-flash
+    provider: google
+    tier: 1
+    cost_per_1k_tokens:
+      input: 0.00   # 無料枠利用
+      output: 0.00  # 無料枠利用
+    latency_ms: 500
+    max_tokens: 8192
+    capabilities:
+      - general_inquiry
+      - validation
+      - summarization
+      - translation
+      - analysis
+    priority_keywords:
+      - "調査"
+      - "検証"
+      - "要約"
+      - "翻訳"
+      - "分析"
+      - "research"
+      - "validate"
+      - "summarize"
+      - "translate"
+    api_client: GeminiAPIClient
+
+  # Tier 2: Claude Sonnet - 複雑推論・統合判断・現在のメインモデル
+  claude_sonnet:
+    id: claude_sonnet
+    name: claude-3-5-sonnet-20241022
+    provider: anthropic
+    tier: 2
+    cost_per_1k_tokens:
+      input: 3.00   # $3.00/1K入力トークン
+      output: 15.00 # $15.00/1K出力トークン
+    latency_ms: 1000
+    max_tokens: 8192
+    capabilities:
+      - complex_reasoning
+      - integration
+      - architectural_design
+      - technical_writing
+      - code_review
+      - general_tasks
+    priority_keywords:
+      - "設計"
+      - "アーキテクチャ"
+      - "複雑"
+      - "統合"
+      - "design"
+      - "architecture"
+      - "complex"
+      - "integration"
+    api_client: AnthropicAPIClient
+
+  # Tier 3: GPT-4o/Gemini Pro - 最高品質設計判断
+  gpt4o:
+    id: gpt4o
+    name: gpt-4o
+    provider: openai
+    tier: 3
+    cost_per_1k_tokens:
+      input: 2.50   # $2.50/1K入力トークン
+      output: 10.00 # $10.00/1K出力トークン
+    latency_ms: 1500
+    max_tokens: 4096
+    capabilities:
+      - premium_analysis
+      - strategic_planning
+      - high_quality_generation
+      - critical_decisions
+    priority_keywords:
+      - "戦略"
+      - "重要"
+      - "最高品質"
+      - "critical"
+      - "strategic"
+      - "premium"
+    api_client: OpenAIAPIClient
+
+  gemini_pro:
+    id: gemini_pro
+    name: gemini-1.5-pro
+    provider: google
+    tier: 3
+    cost_per_1k_tokens:
+      input: 1.25   # $1.25/1K入力トークン
+      output: 5.00  # $5.00/1K出力トークン
+    latency_ms: 1200
+    max_tokens: 8192
+    capabilities:
+      - premium_analysis
+      - multimodal_processing
+      - strategic_planning
+      - high_quality_generation
+    priority_keywords:
+      - "戦略"
+      - "画像解析"
+      - "マルチモーダル"
+      - "strategic"
+      - "multimodal"
+      - "image"
+    api_client: GeminiAPIClient
+
+# ルーティング設定
+routing:
+  default_tier: 1  # デフォルトはTier1から開始
+  fallback_enabled: true
+  max_retries: 3
+  timeout_ms: 30000
+
+  # タスク分類ルール
+  task_classification:
+    coding:
+      keywords: ["code", "コード", "function", "関数", "implement", "実装", "script", "スクリプト", "debug", "デバッグ", "program", "プログラム"]
+      preferred_tier: 0
+    general:
+      keywords: ["explain", "説明", "what", "何", "how", "どう", "why", "なぜ"]
+      preferred_tier: 1
+    complex_analysis:
+      keywords: ["analyze", "分析", "design", "設計", "architecture", "アーキテクチャ", "strategy", "戦略"]
+      preferred_tier: 2
+    premium:
+      keywords: ["critical", "重要", "strategic", "戦略的", "premium", "最高品質"]
+      preferred_tier: 3
+
+# 協調メカニズム設定
+collaboration:
+  cascade_enabled: true      # フォールバック機能
+  refinement_enabled: true   # 上位Tierでの改善
+  parallel_enabled: false    # 並列処理（リソース消費大）
+  
+  quality_thresholds:
+    min_response_length: 10
+    max_error_rate: 0.1
+    min_confidence_score: 0.7
+
+# コスト管理
+cost_management:
+  monthly_budget_usd: 70.0   # 月間予算
+  tier0_allocation: 0.15     # 15% - Qwen3 Coder
+  tier1_allocation: 0.50     # 50% - Gemini Flash (無料)
+  tier2_allocation: 0.25     # 25% - Claude Sonnet
+  tier3_allocation: 0.10     # 10% - Premium models
+  
+  cost_alerts:
+    warning_threshold: 0.8   # 80%で警告
+    critical_threshold: 0.95 # 95%で制限
+
+# 外部API層設定
+external_apis:
+  weather:
+    provider: openweathermap
+    cost_per_request: 0.001
+  stock:
+    provider: alpha_vantage
+    cost_per_request: 0.005
+  news:
+    provider: newsapi
+    cost_per_request: 0.002

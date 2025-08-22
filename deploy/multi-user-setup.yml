@@ -1,0 +1,386 @@
+---
+# Rocky Linux 9 マルチユーザー環境構築 Ansible Playbook
+# 限られたメンバーに独立したClaude Code環境を提供
+
+- name: Configure multi-user Claude Code environment on Rocky Linux 9
+  hosts: rocky_llm_vms
+  become: yes
+  gather_facts: yes
+  vars:
+    # ユーザー定義 - 実際の運用時は vault.yml で暗号化して管理
+    claude_users:
+      - name: user1
+        full_name: "Developer User 1"
+        uid: 2001
+        initial_password_hash: "$6$rounds=4096$salted_hash_here"  # mkpasswd --method=SHA-512 で生成
+        ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2E... user1@company.com"
+      - name: user2
+        full_name: "Developer User 2"
+        uid: 2002
+        initial_password_hash: "$6$rounds=4096$salted_hash_here"
+        ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2E... user2@company.com"
+      - name: user3
+        full_name: "Developer User 3"
+        uid: 2003
+        initial_password_hash: "$6$rounds=4096$salted_hash_here"
+        ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2E... user3@company.com"
+    
+    # Claude Code 設定
+    claude_code_version: "latest"
+    node_version: "20"
+    shared_api_keys:
+      openai: "{{ vault_openai_api_key }}"          # Ansible Vault で暗号化
+      anthropic: "{{ vault_anthropic_api_key }}"    # Ansible Vault で暗号化
+      google: "{{ vault_google_api_key }}"          # Ansible Vault で暗号化
+    
+    # システム設定
+    llm_orchestrator_url: "http://localhost:4000"
+    base_home_dir: "/home"
+    claude_config_template_dir: "/opt/claude-templates"
+
+  tasks:
+    # ===== システム準備 =====
+    - name: システムパッケージ更新
+      dnf:
+        name: "*"
+        state: latest
+        update_cache: yes
+
+    - name: 必要なシステムパッケージインストール
+      dnf:
+        name:
+          - git
+          - curl
+          - wget
+          - vim
+          - htop
+          - tree
+          - unzip
+          - make
+          - gcc-c++
+          - openssl-devel
+          - python3-pip
+          - jq
+        state: present
+
+    - name: EPEL リポジトリ有効化
+      dnf:
+        name: epel-release
+        state: present
+
+    - name: Development Tools グループインストール
+      dnf:
+        name: "@Development Tools"
+        state: present
+
+    # ===== セキュリティ設定 =====
+    - name: firewalld 起動・有効化
+      systemd:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: SSH設定の厳密化
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        backup: yes
+      loop:
+        - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication no" }
+        - { regexp: "^#?PubkeyAuthentication", line: "PubkeyAuthentication yes" }
+        - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin no" }
+        - { regexp: "^#?MaxAuthTries", line: "MaxAuthTries 3" }
+        - { regexp: "^#?ClientAliveInterval", line: "ClientAliveInterval 300" }
+        - { regexp: "^#?ClientAliveCountMax", line: "ClientAliveCountMax 2" }
+      notify: restart_sshd
+
+    # ===== Claude Code テンプレート準備 =====
+    - name: Claude Code 設定テンプレートディレクトリ作成
+      file:
+        path: "{{ claude_config_template_dir }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Claude Code 設定テンプレートファイル作成
+      template:
+        src: claude_config_template.json.j2
+        dest: "{{ claude_config_template_dir }}/config.json"
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: マスターCLAUDE.md ベースファイル作成
+      template:
+        src: claude_md_base.j2
+        dest: /opt/claude-templates/CLAUDE_BASE.md
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Claude Code 初期化スクリプト作成
+      template:
+        src: claude_init.sh.j2
+        dest: "{{ claude_config_template_dir }}/claude_init.sh"
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: CLAUDE.md同期スクリプト配置
+      copy:
+        src: claude-md-sync.sh
+        dest: /usr/local/bin/claude-md-sync
+        mode: '0755'
+        owner: root
+        group: root
+
+    # ===== ユーザー環境構築 =====
+    - name: Claude Code ユーザー作成
+      user:
+        name: "{{ item.name }}"
+        uid: "{{ item.uid }}"
+        comment: "{{ item.full_name }} - Claude Code User"
+        shell: /bin/bash
+        home: "{{ base_home_dir }}/{{ item.name }}"
+        create_home: yes
+        password: "{{ item.initial_password_hash }}"
+        groups: wheel
+        append: yes
+      loop: "{{ claude_users }}"
+
+    - name: ユーザーホームディレクトリ権限設定
+      file:
+        path: "{{ base_home_dir }}/{{ item.name }}"
+        state: directory
+        mode: '0750'  # 他ユーザーからの読み取りを制限
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+      loop: "{{ claude_users }}"
+
+    - name: SSH公開鍵設定
+      authorized_key:
+        user: "{{ item.name }}"
+        key: "{{ item.ssh_public_key }}"
+        state: present
+        manage_dir: yes
+      loop: "{{ claude_users }}"
+
+    # ===== NVM + Node.js インストール (ユーザーごと) =====
+    - name: NVM インストール (各ユーザー)
+      shell: |
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.bashrc
+        echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.bashrc
+        echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"' >> ~/.bashrc
+      args:
+        creates: "{{ base_home_dir }}/{{ item.name }}/.nvm"
+        chdir: "{{ base_home_dir }}/{{ item.name }}"
+      become: yes
+      become_user: "{{ item.name }}"
+      loop: "{{ claude_users }}"
+
+    - name: Node.js インストール (各ユーザー)
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install {{ node_version }}
+        nvm use {{ node_version }}
+        nvm alias default {{ node_version }}
+      args:
+        chdir: "{{ base_home_dir }}/{{ item.name }}"
+      become: yes
+      become_user: "{{ item.name }}"
+      loop: "{{ claude_users }}"
+
+    # ===== Claude Code インストール (各ユーザー) =====
+    - name: Claude Code CLI インストール (各ユーザー)
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        npm install -g @anthropic-ai/claude-cli
+      args:
+        chdir: "{{ base_home_dir }}/{{ item.name }}"
+      become: yes
+      become_user: "{{ item.name }}"
+      loop: "{{ claude_users }}"
+
+    # ===== ~/.claude ディレクトリとその設定 =====
+    - name: .claude ディレクトリ作成 (各ユーザー)
+      file:
+        path: "{{ base_home_dir }}/{{ item.name }}/.claude"
+        state: directory
+        mode: '0700'  # 所有者のみアクセス可能
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+      loop: "{{ claude_users }}"
+
+    - name: Claude Code 設定ファイル配置 (各ユーザー)
+      template:
+        src: user_claude_config.json.j2
+        dest: "{{ base_home_dir }}/{{ item.name }}/.claude/config.json"
+        mode: '0600'  # 所有者のみ読み書き可能
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+      loop: "{{ claude_users }}"
+
+    - name: Claude Code CLAUDE.md（進化型）設定ファイル作成
+      template:
+        src: claude_md_base.j2
+        dest: "{{ base_home_dir }}/{{ item.name }}/.claude/CLAUDE.md"
+        mode: '0600'
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+      loop: "{{ claude_users }}"
+
+    # ===== 環境変数設定 =====
+    - name: 環境変数設定 (.bashrc)
+      blockinfile:
+        path: "{{ base_home_dir }}/{{ item.name }}/.bashrc"
+        block: |
+          # ===== Claude Code & LLM Orchestrator =====
+          export CLAUDE_API_KEY="{{ shared_api_keys.anthropic }}"
+          export OPENAI_API_KEY="{{ shared_api_keys.openai }}"
+          export GOOGLE_API_KEY="{{ shared_api_keys.google }}"
+          export LLM_ORCHESTRATOR_URL="{{ llm_orchestrator_url }}"
+          export NODE_ENV="production"
+          
+          # Claude Code エイリアス
+          alias claude="claude-cli"
+          alias llm-status="curl -s {{ llm_orchestrator_url }}/health | jq ."
+          alias llm-info="curl -s {{ llm_orchestrator_url }}/info | jq ."
+          
+          # CLAUDE.md 管理エイリアス
+          alias claude-sync="claude-md-sync sync"
+          alias claude-status="claude-md-sync status"
+          alias claude-edit="claude-md-sync custom --edit"
+          alias claude-backup="claude-md-sync backup"
+          
+          # 便利なエイリアス
+          alias ll="ls -alF"
+          alias la="ls -A"
+          alias l="ls -CF"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - Claude Code"
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: '0644'
+      loop: "{{ claude_users }}"
+
+    # ===== プロジェクトワークスペース準備 =====
+    - name: プロジェクトワークスペースディレクトリ作成
+      file:
+        path: "{{ base_home_dir }}/{{ item.name }}/projects"
+        state: directory
+        mode: '0755'
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+      loop: "{{ claude_users }}"
+
+    - name: Claude Code 使用説明書作成
+      template:
+        src: claude_usage_guide.md.j2
+        dest: "{{ base_home_dir }}/{{ item.name }}/Claude_Code_使用説明書.md"
+        mode: '0644'
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+      loop: "{{ claude_users }}"
+
+    # ===== セキュリティ設定 (ユーザー別) =====
+    - name: ユーザー固有セキュリティ設定
+      blockinfile:
+        path: "{{ base_home_dir }}/{{ item.name }}/.bashrc"
+        block: |
+          # ===== セキュリティ設定 =====
+          # 履歴の設定
+          export HISTSIZE=1000
+          export HISTFILESIZE=2000
+          export HISTCONTROL=ignoredups:erasedups
+          
+          # APIキー保護の注意喚起
+          echo ""
+          echo "🔐 セキュリティ注意事項:"
+          echo "   • API キーは他者と共有しないでください"
+          echo "   • ~/.claude/ ディレクトリの権限を変更しないでください"
+          echo "   • 不審な活動を発見した場合は管理者に報告してください"
+          echo ""
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - Security"
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: '0644'
+      loop: "{{ claude_users }}"
+
+    # ===== ログインメッセージ設定 =====
+    - name: ユーザー用 MOTD メッセージ作成
+      template:
+        src: user_motd.j2
+        dest: "{{ base_home_dir }}/{{ item.name }}/.hushlogin"
+        mode: '0644'
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+      loop: "{{ claude_users }}"
+
+    - name: ログイン時の Claude Code 動作確認スクリプト
+      template:
+        src: login_check.sh.j2
+        dest: "{{ base_home_dir }}/{{ item.name }}/.claude_login_check.sh"
+        mode: '0750'
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+      loop: "{{ claude_users }}"
+
+    - name: ログインスクリプトを .profile に追加
+      lineinfile:
+        path: "{{ base_home_dir }}/{{ item.name }}/.profile"
+        line: "[ -x ~/.claude_login_check.sh ] && ~/.claude_login_check.sh"
+        create: yes
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: '0644'
+      loop: "{{ claude_users }}"
+
+  # ===== ハンドラー =====
+  handlers:
+    - name: restart_sshd
+      systemd:
+        name: sshd
+        state: restarted
+
+    - name: reload_firewalld
+      systemd:
+        name: firewalld
+        state: reloaded
+
+# ===== 実行後の確認タスク =====
+- name: 環境構築確認
+  hosts: rocky_llm_vms
+  become: no
+  gather_facts: no
+  tasks:
+    - name: ユーザー一覧確認
+      command: "getent passwd"
+      register: user_list
+      
+    - name: 構築されたユーザー表示
+      debug:
+        msg: "構築済みユーザー: {{ claude_users | map(attribute='name') | join(', ') }}"
+
+    - name: セキュリティ確認メッセージ
+      debug:
+        msg: |
+          🎉 マルチユーザー環境構築完了！
+          
+          ✅ 次のステップ:
+          1. 各ユーザーにSSH接続情報を通知
+          2. 初回ログイン時のパスワード変更を推奨
+          3. Claude Code動作確認実行
+          4. セキュリティ監査実行
+          
+          🔐 セキュリティ確認:
+          • SSH公開鍵認証のみ有効
+          • パスワード認証無効化
+          • 各ユーザーの ~/.claude ディレクトリは 0700 権限
+          • API キーは環境変数で管理
+          • ログイン時セキュリティメッセージ表示

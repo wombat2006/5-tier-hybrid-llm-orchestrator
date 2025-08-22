@@ -1,0 +1,47 @@
+{
+  "name": "hybrid-llm-orchestrator",
+  "version": "1.0.0",
+  "description": "5-Tier Hybrid LLM Orchestration System with OpenAI Assistant API Integration",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "jest tests/e2e.test.ts --testTimeout=120000",
+    "deploy:check": "node deploy/pre-deploy-check.js",
+    "deploy:build": "npm run build && npm run test && npm run deploy:check",
+    "health": "curl -s http://localhost:4000/health | python3 -m json.tool",
+    "info": "curl -s http://localhost:4000/info | python3 -m json.tool",
+    "metrics": "curl -s http://localhost:4000/metrics | python3 -m json.tool"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@alicloud/openapi-client": "^0.4.15",
+    "@anthropic-ai/sdk": "^0.60.0",
+    "@google/generative-ai": "^0.24.1",
+    "@types/jsonwebtoken": "^9.0.10",
+    "axios": "^1.11.0",
+    "dotenv": "^17.2.1",
+    "js-yaml": "^4.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "openai": "^5.15.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.3.0",
+    "jest": "^30.0.5",
+    "ts-jest": "^29.4.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}

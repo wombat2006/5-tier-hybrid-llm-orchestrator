@@ -1,0 +1,249 @@
+# 🤖 Claude Code 使用説明書
+
+**ユーザー**: {{ item.full_name }} ({{ item.name }})  
+**環境**: Rocky Linux 9 マルチユーザー本番環境  
+**作成日**: {{ ansible_date_time.iso8601 }}
+
+## 📋 目次
+
+1. [基本的な使用方法](#基本的な使用方法)
+2. [5層ハイブリッドシステム](#5層ハイブリッドシステム)
+3. [コスト管理](#コスト管理)
+4. [セキュリティガイドライン](#セキュリティガイドライン)
+5. [トラブルシューティング](#トラブルシューティング)
+6. [よくある質問](#よくある質問)
+
+## 🚀 基本的な使用方法
+
+### 初回セットアップ確認
+
+```bash
+# Claude Code 動作確認
+claude --help
+
+# システム状態確認
+llm-status
+
+# システム詳細情報
+llm-info
+```
+
+### プロジェクト開始
+
+```bash
+# プロジェクトディレクトリに移動
+cd ~/projects
+
+# 新しいプロジェクト作成
+mkdir my-new-project
+cd my-new-project
+
+# Claude Code セッション開始
+claude
+```
+
+### 基本コマンド
+
+```bash
+# 汎用LLM生成
+curl -X POST {{ llm_orchestrator_url }}/generate \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"Hello, explain quantum computing","task_type":"general"}'
+
+# コーディング特化
+curl -X POST {{ llm_orchestrator_url }}/code \
+  -H "Content-Type: application/json" \
+  -d '{"task":"Create a Python function to sort a list","language":"python"}'
+```
+
+## 🎯 5層ハイブリッドシステム
+
+### Tier 0: Qwen3 Coder (推奨: コーディング)
+- **コスト**: $0.05/1K入力トークン ⭐ **最安**
+- **得意分野**: プログラミング、コードレビュー、デバッグ
+- **使用例**:
+  ```bash
+  curl -X POST {{ llm_orchestrator_url }}/generate \
+    -H "Content-Type: application/json" \
+    -d '{"prompt":"Fix this Python bug: ...","task_type":"coding","preferred_tier":0}'
+  ```
+
+### Tier 1: Gemini Flash (推奨: 調査・検証)
+- **コスト**: 無料枠利用 ⭐ **無料**
+- **得意分野**: 一般調査、要約、翻訳、分析
+- **使用例**:
+  ```bash
+  curl -X POST {{ llm_orchestrator_url }}/generate \
+    -H "Content-Type: application/json" \
+    -d '{"prompt":"Summarize this technical document","task_type":"general"}'
+  ```
+
+### Tier 2: Claude Sonnet (推奨: 複雑推論)
+- **コスト**: $3.00/1K入力トークン 💰 **高コスト**
+- **得意分野**: 複雑な推論、統合判断、アーキテクチャ設計
+- **使用例**:
+  ```bash
+  curl -X POST {{ llm_orchestrator_url }}/generate \
+    -H "Content-Type: application/json" \
+    -d '{"prompt":"Design a microservices architecture","task_type":"complex_analysis"}'
+  ```
+
+### Tier 3: GPT-4o/Gemini Pro (推奨: 最重要判断)
+- **コスト**: $2.50/1K入力トークン 💎 **プレミアム**
+- **得意分野**: 戦略的判断、重要な意思決定
+- **使用例**:
+  ```bash
+  curl -X POST {{ llm_orchestrator_url }}/generate \
+    -H "Content-Type: application/json" \
+    -d '{"prompt":"Strategic technology roadmap","task_type":"premium"}'
+  ```
+
+## 💰 コスト管理
+
+### 月間予算: $70
+
+| Tier | 割当予算 | 推奨用途 |
+|------|----------|----------|
+| Tier 0 | $10.50 (15%) | 日常コーディング |
+| Tier 1 | $35.00 (50%) | 調査・検証 |
+| Tier 2 | $17.50 (25%) | 重要判断 |
+| Tier 3 | $7.00 (10%) | 最重要のみ |
+
+### コスト節約のコツ
+
+1. **Tier選択**: 適切なTierを選択（auto判定も利用可能）
+2. **プロンプト最適化**: 簡潔で明確な指示
+3. **バッチ処理**: 関連する質問をまとめて処理
+4. **キャッシュ活用**: 類似の作業は過去の結果を参考に
+
+## 🔐 セキュリティガイドライン
+
+### ⚠️ 重要な注意事項
+
+1. **API キーの取り扱い**
+   - APIキーは**絶対に**他者と共有しないでください
+   - コードにAPIキーをハードコーディングしないでください
+   - `.env`ファイルは`.gitignore`に追加してください
+
+2. **機密情報の保護**
+   - 顧客情報や企業機密をプロンプトに含めないでください
+   - 必要に応じてデータを匿名化してください
+   - 重要な情報はローカルファイルでのみ管理してください
+
+3. **アクセス制限**
+   - 他ユーザーの`~/.claude`ディレクトリにアクセスしないでください
+   - 共有されたAPIキーは責任を持って使用してください
+   - 不審な活動を発見した場合は即座に報告してください
+
+### 監査とログ
+
+- すべてのAPI使用量が記録されます
+- 異常な使用パターンは自動検出されます
+- 定期的なセキュリティ監査が実施されます
+
+## 🛠️ OpenAI Assistant API機能
+
+### File Search機能
+
+```bash
+# ファイル検索
+curl -X POST {{ llm_orchestrator_url }}/assistant/file-search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Find documentation about authentication",
+    "file_paths": ["/path/to/docs"]
+  }'
+```
+
+### Code Interpreter機能
+
+```bash
+# コード実行・分析
+curl -X POST {{ llm_orchestrator_url }}/assistant/code-interpreter \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Analyze this data and create a visualization",
+    "code_context": "import pandas as pd..."
+  }'
+```
+
+## 🔧 トラブルシューティング
+
+### よくある問題と解決方法
+
+#### 1. 「Permission denied」エラー
+```bash
+# ~/.claude ディレクトリの権限確認
+ls -la ~/.claude
+# 権限修正（必要に応じて）
+chmod 700 ~/.claude
+chmod 600 ~/.claude/config.json
+```
+
+#### 2. API接続エラー
+```bash
+# 環境変数確認
+echo $CLAUDE_API_KEY | head -c 10
+# ネットワーク接続確認
+curl -I {{ llm_orchestrator_url }}/health
+```
+
+#### 3. Node.js/npm エラー
+```bash
+# NVM環境再読み込み
+source ~/.bashrc
+# Node.js バージョン確認
+node --version
+```
+
+#### 4. Claude CLI が見つからない
+```bash
+# PATH確認
+echo $PATH
+# Claude CLI 再インストール
+npm install -g @anthropic-ai/claude-cli
+```
+
+## ❓ よくある質問
+
+### Q: コストはどこで確認できますか？
+A: システムメトリクス確認: `llm-info` コマンドまたは管理者へ問い合わせ
+
+### Q: 他のユーザーとプロジェクトを共有できますか？
+A: セキュリティ上、直接共有は不可。管理者経由で調整してください
+
+### Q: APIキーを個人のものに変更できますか？
+A: 現在は管理者のキーを共有使用中。個人キーへの変更は管理者に相談
+
+### Q: 大量の処理を実行したい場合は？
+A: 事前に管理者に連絡し、コスト影響を確認してください
+
+### Q: システムが応答しない場合は？
+A: 
+1. `llm-status` で状態確認
+2. 管理者に連絡: {{ admin_contact | default('system-admin@company.com') }}
+
+## 📞 サポート連絡先
+
+- **一般サポート**: tech-support@company.com
+- **緊急時**: system-admin@company.com  
+- **セキュリティ報告**: security@company.com
+
+## 🎓 学習リソース
+
+### 推奨学習順序
+1. Tier 1 (Gemini Flash) で基本操作習得
+2. Tier 0 (Qwen3 Coder) でコーディング練習
+3. 複雑なタスクでTier 2/3を段階的に活用
+
+### ベストプラクティス
+- 明確で具体的なプロンプト作成
+- 適切なTier選択
+- セキュリティガイドライン遵守
+- コスト意識を持った使用
+
+---
+
+**Happy Coding with Claude! 🚀**
+
+*最終更新: {{ ansible_date_time.iso8601 }}*
