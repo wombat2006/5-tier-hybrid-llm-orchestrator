@@ -118,17 +118,17 @@ premium_models:
     capabilities: [premium_analysis, strategic_planning, complex_reasoning]
     description: "OpenAI最高品質モデル"
 
-  claude_opus:
-    openrouter_id: "anthropic/claude-3-opus"
-    name: "Claude 3 Opus"
-    provider_family: "anthropic"
-    tier: 3
-    pricing:
-      prompt: 15.0
-      completion: 75.0
-    context_length: 200000
-    capabilities: [premium_analysis, creative_writing, complex_reasoning]
-    description: "Claude最高品質モデル"
+# claude_opus: # 高コストのため無効化
+    # openrouter_id: "anthropic/claude-3-opus"
+    # name: "Claude 3 Opus"
+    # provider_family: "anthropic"
+    # tier: 3
+    # pricing:
+    #   prompt: 15.0
+    #   completion: 75.0
+    # context_length: 200000
+    # capabilities: [premium_analysis, creative_writing, complex_reasoning]
+    # description: "Claude最高品質モデル（高コストのため無効化）"
 
   o1_preview:
     openrouter_id: "openai/o1-preview"
