@@ -3,6 +3,7 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { ModelConfig } from '../types';
 import { OpenRouterModelInfo, UniversalOpenRouterClient } from '../clients/UniversalOpenRouterClient';
+import { MockUniversalOpenRouterClient } from '../clients/MockUniversalOpenRouterClient';
 
 /**
  * OpenRouterModelRegistry - OpenRouterモデルの動的管理
@@ -48,7 +49,7 @@ export class OpenRouterModelRegistry {
   private static instance: OpenRouterModelRegistry;
   private config: OpenRouterConfig | null = null;
   private modelCache: Map<string, ModelConfig> = new Map();
-  private clientCache: Map<string, UniversalOpenRouterClient> = new Map();
+  private clientCache: Map<string, UniversalOpenRouterClient | MockUniversalOpenRouterClient> = new Map();
 
   private constructor() {}
 
@@ -111,8 +112,9 @@ export class OpenRouterModelRegistry {
 
   /**
    * UniversalOpenRouterClientを取得（キャッシュ付き）
+   * APIキーがない場合はMockクライアントを返す
    */
-  public getClient(modelId: string): UniversalOpenRouterClient | null {
+  public getClient(modelId: string): UniversalOpenRouterClient | MockUniversalOpenRouterClient | null {
     if (this.clientCache.has(modelId)) {
       return this.clientCache.get(modelId)!;
     }
@@ -125,15 +127,45 @@ export class OpenRouterModelRegistry {
 
     try {
       const openRouterModelInfo = this.buildOpenRouterModelInfo(modelId);
-      const client = new UniversalOpenRouterClient(modelConfig, openRouterModelInfo);
+      
+      // APIキーの存在確認
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      const hasValidApiKey = apiKey && 
+                           !apiKey.includes('test') && 
+                           !apiKey.includes('development') &&
+                           !apiKey.includes('your_') &&
+                           apiKey.startsWith('sk-or-v1-');
+
+      let client;
+      if (hasValidApiKey) {
+        // 実際のOpenRouterクライアント
+        client = new UniversalOpenRouterClient(modelConfig, openRouterModelInfo);
+        console.log(`[OpenRouterModelRegistry] ✅ Real OpenRouter client created for: ${modelId}`);
+      } else {
+        // モッククライアント
+        const { MockUniversalOpenRouterClient } = require('../clients/MockUniversalOpenRouterClient');
+        client = new MockUniversalOpenRouterClient(modelConfig, openRouterModelInfo);
+        console.log(`[OpenRouterModelRegistry] 🔄 Mock client created for: ${modelId} (no valid API key)`);
+      }
       
       this.clientCache.set(modelId, client);
-      console.log(`[OpenRouterModelRegistry] ✅ Client created for: ${modelId}`);
-      
       return client;
     } catch (error) {
       console.error(`[OpenRouterModelRegistry] ❌ Failed to create client for ${modelId}:`, error);
-      return null;
+      
+      // フォールバックとしてMockクライアントを試行
+      try {
+        const openRouterModelInfo = this.buildOpenRouterModelInfo(modelId);
+        const { MockUniversalOpenRouterClient } = require('../clients/MockUniversalOpenRouterClient');
+        const mockClient = new MockUniversalOpenRouterClient(modelConfig, openRouterModelInfo);
+        
+        this.clientCache.set(modelId, mockClient);
+        console.log(`[OpenRouterModelRegistry] 🔄 Fallback to mock client for: ${modelId}`);
+        return mockClient;
+      } catch (fallbackError) {
+        console.error(`[OpenRouterModelRegistry] ❌ Mock client fallback also failed:`, fallbackError);
+        return null;
+      }
     }
   }
 
