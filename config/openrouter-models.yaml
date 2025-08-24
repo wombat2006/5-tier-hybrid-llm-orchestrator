@@ -61,17 +61,17 @@ general_models:
     capabilities: [general_tasks, quick_analysis, summarization]
     description: "高速低コストClaude"
 
-  llama3_8b:
-    openrouter_id: "meta-llama/llama-3-8b-instruct"
-    name: "Llama 3 8B"
-    provider_family: "meta"
+  gemini_2_5_flash:
+    openrouter_id: "google/gemini-2.5-flash"
+    name: "Gemini 2.5 Flash"
+    provider_family: "google"
     tier: 1
     pricing:
-      prompt: 0.18
-      completion: 0.18
-    context_length: 8192
-    capabilities: [general_tasks, reasoning, conversation]
-    description: "オープンソース高性能モデル"
+      prompt: 0.075
+      completion: 0.30
+    context_length: 1000000
+    capabilities: [general_inquiry, fast_processing, analysis, summarization]
+    description: "高速汎用モデル、100万トークン対応"
 
 # ===========================================
 # Tier 2: 高品質推論モデル
@@ -192,18 +192,6 @@ specialized_models:
 # ===========================================
 free_models:
 
-  llama3_free:
-    openrouter_id: "meta-llama/llama-3-8b-instruct:free"
-    name: "Llama 3 8B (Free)"
-    provider_family: "meta"
-    tier: 1
-    pricing:
-      prompt: 0
-      completion: 0
-    context_length: 8192
-    rate_limits: {requests_per_minute: 20, daily_limit: 200}
-    capabilities: [general_tasks, conversation]
-    description: "無料汎用モデル"
 
 # ===========================================
 # プリセット設定
@@ -212,23 +200,23 @@ presets:
   # コスト重視プリセット
   cost_optimized:
     tier0: "qwen3_coder_free"
-    tier1: "llama3_free"
+    tier1: "gemini_2_5_flash"
     tier2: "claude_haiku"
     tier3: "claude_sonnet"
 
   # 性能重視プリセット
   performance_optimized:
-    tier0: "qwen3_coder"
-    tier1: "gemini_flash"
+    tier0: "qwen3_coder_free"
+    tier1: "gemini_2_5_flash"
     tier2: "claude_sonnet"
     tier3: "gpt4o"
 
   # バランス型プリセット
   balanced:
-    tier0: "qwen3_coder"
-    tier1: "llama3_8b"
-    tier2: "gemini_pro"
-    tier3: "claude_sonnet"
+    tier0: "qwen3_coder_free"
+    tier1: "gemini_2_5_flash"
+    tier2: "claude_sonnet"
+    tier3: "gemini_pro"
 
 # ===========================================
 # デフォルト設定

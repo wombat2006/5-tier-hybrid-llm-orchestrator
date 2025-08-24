@@ -81,16 +81,16 @@ models:
       - "reasoning"
     api_client: GeminiAPIClient
 
-  # Tier 1: 汎用・無料枠モデル
-  gemini_flash:
-    id: gemini_flash
-    name: gemini:flash  # エイリアス使用: gemini-1.5-flash-002
+  # Tier 1: 汎用・高速モデル
+  gemini_2_5_flash:
+    id: gemini_2_5_flash
+    name: gemini-2.5-flash  # Gemini 2.5 Flash最新版
     provider: google
     tier: 1
     cost_per_1k_tokens:
-      input: 0.00   # 無料枠利用
-      output: 0.00  # 無料枠利用
-    latency_ms: 500
+      input: 0.075  # $0.075/1K入力トークン
+      output: 0.30  # $0.30/1K出力トークン
+    latency_ms: 400
     max_tokens: 8192
     capabilities:
       - general_inquiry
@@ -98,6 +98,7 @@ models:
       - summarization
       - translation
       - analysis
+      - fast_processing
     priority_keywords:
       - "調査"
       - "検証"
@@ -110,17 +111,17 @@ models:
       - "translate"
     api_client: GeminiAPIClient
 
-  # Tier 2: Claude 3.5 Sonnet - 複雑推論・統合判断・高性能メインモデル
+  # Tier 2: Claude Sonnet 4 - 複雑推論・統合判断・最高性能メインモデル (Anthropic直接API)
   claude_sonnet:
     id: claude_sonnet
-    name: claude-3-5-sonnet-20240620  # Anthropic API安定版
+    name: claude-sonnet-4-20250514  # Claude Sonnet 4最新版 (Anthropic直接API)
     provider: anthropic
     tier: 2
     cost_per_1k_tokens:
       input: 3.00   # $3.00/1K入力トークン
       output: 15.00 # $15.00/1K出力トークン
-    latency_ms: 900
-    max_tokens: 8192
+    latency_ms: 800
+    max_tokens: 64000  # Claude 4の大容量出力対応
     capabilities:
       - complex_reasoning
       - integration
@@ -129,6 +130,8 @@ models:
       - code_review
       - general_tasks
       - advanced_coding
+      - extended_thinking
+      - memory_management
     priority_keywords:
       - "設計"
       - "アーキテクチャ"
@@ -307,8 +310,8 @@ collaboration:
 cost_management:
   monthly_budget_usd: 70.0   # 月間予算
   tier0_allocation: 0.05     # 5% - 無料枠（Qwen3 Coder Free、Gemini 2.5 Pro Exp）
-  tier1_allocation: 0.15     # 15% - 低コストモデル（Gemini Flash）※ほぼ無料
-  tier2_allocation: 0.60     # 60% - Claude 3.5 Sonnet（メインモデル）
+  tier1_allocation: 0.25     # 25% - 中コストモデル（Gemini 2.5 Flash）
+  tier2_allocation: 0.50     # 50% - Claude Sonnet 4（メインモデル）
   tier3_allocation: 0.15     # 15% - Premium models（GPT-4o、Gemini Pro）
   tier4_allocation: 0.05     # 5% - Ultimate models（GPT-5）※厳格制限
   
