@@ -110,9 +110,9 @@ export class ConfigLoader {
       }
     }
 
-    // Tierの検証
-    if (![0, 1, 2, 3].includes(config.tier)) {
-      throw new Error(`Model "${modelId}" has invalid tier: ${config.tier}. Must be 0, 1, 2, or 3`);
+    // Tierの検証（Tier 4を追加）
+    if (![0, 1, 2, 3, 4].includes(config.tier)) {
+      throw new Error(`Model "${modelId}" has invalid tier: ${config.tier}. Must be 0, 1, 2, 3, or 4`);
     }
 
     // プロバイダーの検証
