@@ -26,6 +26,8 @@ import { MockQwenClient } from '../clients/MockQwenClient';
 import { AnthropicAPIClient } from '../clients/AnthropicClient';
 import { OpenAIAPIClient } from '../clients/OpenAIClient';
 import { OpenRouterModelRegistry } from '../services/OpenRouterModelRegistry';
+import { ModelAliasResolver } from '../services/ModelAliasResolver';
+// CLI関連のimportを削除 - ToolOrchestratorServiceに移行
 import { TaskDecomposer } from '../pipeline/TaskDecomposer';
 import { DifficultyClassifier } from '../pipeline/DifficultyClassifier';
 import { QualityGate } from '../pipeline/QualityGate';
@@ -67,6 +69,11 @@ export class LLMOrchestrator {
   
   // OpenRouter Model Registry
   private openRouterRegistry: OpenRouterModelRegistry | undefined;
+  
+  // Model Alias Resolver（公式エイリアス対応）
+  private aliasResolver!: ModelAliasResolver;
+  
+  // CLI Interface Manager removed - moved to ToolOrchestratorService
 
   constructor(configPath?: string) {
     console.log('[LLMOrchestrator] Initializing 5-Tier Hybrid LLM System with Collaborative Coding...');
@@ -83,6 +90,8 @@ export class LLMOrchestrator {
       console.warn('[LLMOrchestrator] Environment warnings:', envCheck.warnings);
     }
 
+    this.initializeAliasResolver();
+    // CLI Manager initialization moved to ToolOrchestratorService
     this.initializeOpenRouterRegistry();
     this.initializeClients();
     this.initializeMetrics();
@@ -98,12 +107,34 @@ export class LLMOrchestrator {
     this.printSystemSummary();
   }
 
+  private initializeAliasResolver(): void {
+    console.log('[LLMOrchestrator] Initializing Model Alias Resolver...');
+    
+    try {
+      this.aliasResolver = ModelAliasResolver.getInstance();
+      this.aliasResolver.loadConfig('./config/model-aliases.yaml');
+      
+      const stats = this.aliasResolver.getStats();
+      console.log(`[LLMOrchestrator] ✅ Model Alias Resolver initialized: ${stats.providers} providers, ${stats.total_aliases} aliases, ${stats.official_alias_providers} official`);
+      
+    } catch (error) {
+      console.error('[LLMOrchestrator] ❌ Failed to initialize Model Alias Resolver:', error);
+      throw error;
+    }
+  }
+
+  // initializeCLIManager method removed - moved to ToolOrchestratorService
+
   private initializeClients(): void {
     console.log('[LLMOrchestrator] Initializing API clients...');
 
     for (const [modelId, modelConfig] of Object.entries(this.config.models)) {
       try {
         let client: BaseLLMClient;
+        
+        // エイリアス解決でモデル名を取得
+        const resolvedModelName = this.aliasResolver.resolveAlias(modelConfig.name);
+        console.log(`[LLMOrchestrator] 🔄 Resolved model alias: ${modelConfig.name} → ${resolvedModelName}`);
 
         switch (modelConfig.provider) {
           case 'alibaba_cloud':
@@ -123,24 +154,24 @@ export class LLMOrchestrator {
               console.log(`[LLMOrchestrator] 🔄 Using Mock Qwen3 Coder client (missing OpenRouter credentials)`);
               client = new MockQwenClient();
             } else {
-              client = new OpenRouterAPIClient(modelConfig.name);
+              client = new OpenRouterAPIClient(resolvedModelName);
             }
             console.log(`[LLMOrchestrator] ✅ OpenRouter Qwen3 Coder client initialized (Tier ${modelConfig.tier})`);
             break;
           
           case 'google':
-            client = new GeminiAPIClient(modelConfig.name);
-            console.log(`[LLMOrchestrator] ✅ Gemini client initialized: ${modelConfig.name} (Tier ${modelConfig.tier})`);
+            client = new GeminiAPIClient(resolvedModelName);
+            console.log(`[LLMOrchestrator] ✅ Gemini client initialized: ${resolvedModelName} (Tier ${modelConfig.tier})`);
             break;
           
           case 'anthropic':
-            client = new AnthropicAPIClient(modelConfig.name);
-            console.log(`[LLMOrchestrator] ✅ Anthropic client initialized (${modelId})`);
+            client = new AnthropicAPIClient(resolvedModelName);
+            console.log(`[LLMOrchestrator] ✅ Anthropic client initialized: ${resolvedModelName} (${modelId})`);
             break;
           
           case 'openai':
-            client = new OpenAIAPIClient(modelConfig.name);
-            console.log(`[LLMOrchestrator] ✅ OpenAI client initialized (${modelId})`);
+            client = new OpenAIAPIClient(resolvedModelName);
+            console.log(`[LLMOrchestrator] ✅ OpenAI client initialized: ${resolvedModelName} (${modelId})`);
             break;
           
           default:
@@ -1316,4 +1347,13 @@ Please address these issues and provide an improved implementation.`;
       }
     };
   }
+
+  // ============================================
+  // CLI インターフェース管理メソッド - REMOVED
+  // All CLI functionality moved to ToolOrchestratorService
+  // ============================================
+  
+  // processCLIRequest, selectOptimalCLI, startCLISession, 
+  // getCLIStats, switchToGeminiCLI methods removed
+  // Use ToolOrchestratorService for all CLI operations
 }

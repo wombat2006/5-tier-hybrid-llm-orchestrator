@@ -1,0 +1,184 @@
+# LLMモデル エイリアス設定
+# バージョンアップに柔軟に対応するためのエイリアス管理
+
+# ===========================================
+# エイリアス設定の基本ルール
+# ===========================================
+# - stable: 安定版（推奨）
+# - latest: 最新版（実験的）
+# - preview: プレビュー版
+# - legacy: 旧版（後方互換性）
+
+aliases:
+  # ===========================================
+  # Anthropic Claude エイリアス（公式対応）
+  # ===========================================
+  claude:
+    # 公式エイリアス（Anthropic公式で自動更新される）
+    stable: "claude-sonnet-4-20250514"      # 安定版（公式推奨）
+    latest: "claude-sonnet-4-20250514"      # 最新版（公式自動更新）
+    
+    # 具体的なバージョン（公式モデル名）
+    sonnet4: "claude-sonnet-4-20250514"     # Claude Sonnet 4（最新）
+    opus4: "claude-opus-4-20250514"         # Claude Opus 4.1（最高性能）
+    sonnet3.7: "claude-3-7-sonnet"          # Claude Sonnet 3.7
+    sonnet3.5: "claude-3-5-sonnet-20241022" # Claude 3.5 Sonnet（廃止予定: 2025-10-22）
+    
+    # レガシー（後方互換）
+    legacy: "claude-3-5-sonnet-20241022"    # 旧版（廃止予定）
+    haiku: "claude-3-haiku-20240307"        # Haiku（軽量）
+    opus: "claude-3-opus-20240229"          # Opus 3（レガシー）
+    
+  # ===========================================
+  # OpenAI GPT エイリアス（公式対応）
+  # ===========================================
+  gpt:
+    # 公式エイリアス（OpenAI公式で自動更新される）
+    stable: "gpt-4.1"                       # 安定版（公式推奨）
+    latest: "gpt-4.1"                       # 最新版（公式自動更新）
+    
+    # GPT-4.1シリーズ（2025年最新）
+    "4.1": "gpt-4.1"                       # GPT-4.1（公式エイリアス）
+    "4.1-mini": "gpt-4.1-mini"             # GPT-4.1 Mini（公式エイリアス）
+    "4.1-nano": "gpt-4.1-nano"             # GPT-4.1 Nano（公式エイリアス）
+    
+    # GPT-4oシリーズ
+    "4o": "gpt-4o"                         # GPT-4o（公式エイリアス）
+    "4o-mini": "gpt-4o-mini"               # GPT-4o Mini（公式エイリアス）
+    chatgpt: "chatgpt-4o-latest"            # ChatGPT-4o Latest（公式エイリアス）
+    
+    # レガシー
+    legacy: "gpt-4-turbo"                   # GPT-4 Turbo（レガシー）
+    o1: "o1-preview-2024-09-12"             # o1 Preview（推論特化）
+    o1-mini: "o1-mini-2024-09-12"           # o1 Mini
+    
+  # ===========================================
+  # Google Gemini エイリアス（公式対応）
+  # ===========================================
+  gemini:
+    # 公式エイリアス（Google公式で自動更新される）
+    stable: "gemini-2.5-pro"                # 安定版（公式推奨）
+    latest: "gemini-2.5-pro"                # 最新版（公式自動更新）
+    
+    # Gemini 2.5シリーズ（2025年最新・安定版）
+    "2.5-pro": "gemini-2.5-pro"            # Gemini 2.5 Pro（公式エイリアス）
+    "2.5-flash": "gemini-2.5-flash"        # Gemini 2.5 Flash（公式エイリアス）
+    "2.5-flash-lite": "gemini-2.5-flash-lite" # Gemini 2.5 Flash-Lite（公式エイリアス）
+    
+    # Gemini 2.0シリーズ
+    "2.0-flash": "gemini-2.0-flash"        # Gemini 2.0 Flash（公式エイリアス）
+    "2.0-flash-lite": "gemini-2.0-flash-lite" # Gemini 2.0 Flash-Lite（公式エイリアス）
+    
+    # Gemini 1.5シリーズ（レガシー但し安定）
+    "1.5-pro": "gemini-1.5-pro-002"        # Gemini 1.5 Pro（公式エイリアス）
+    "1.5-flash": "gemini-1.5-flash-002"    # Gemini 1.5 Flash（公式エイリアス）
+    "1.5-flash-8b": "gemini-1.5-flash-8b-001" # Gemini 1.5 Flash 8B（公式エイリアス）
+    
+    # レガシー
+    legacy: "gemini-1.0-pro"                # Gemini 1.0 Pro（レガシー）
+    
+  # ===========================================
+  # Qwen エイリアス
+  # ===========================================
+  qwen:
+    stable: "qwen/qwen-3-coder-32b-instruct"      # 安定版
+    latest: "qwen/qwen-3-coder-32b-instruct"      # 最新版
+    free: "qwen/qwen-3-coder-32b-instruct:free"   # 無料版
+    legacy: "qwen/qwen-2.5-coder-32b-instruct"    # 旧版
+    
+    # 具体的なバリエーション
+    coder: "qwen/qwen-3-coder-32b-instruct"       # コーダー特化
+    coder-free: "qwen/qwen-3-coder-32b-instruct:free"  # コーダー無料
+    math: "qwen/qwen-2.5-math-72b-instruct"       # 数学特化
+    general: "qwen/qwen-2.5-72b-instruct"         # 汎用
+    
+  # ===========================================
+  # Meta Llama エイリアス
+  # ===========================================
+  llama:
+    stable: "meta-llama/llama-3.1-8b-instruct"    # 安定版
+    latest: "meta-llama/llama-3.1-8b-instruct"    # 最新版
+    free: "meta-llama/llama-3-8b-instruct:free"   # 無料版
+    legacy: "meta-llama/llama-3-8b-instruct"      # 旧版
+    
+    # 具体的なバリエーション
+    3.1: "meta-llama/llama-3.1-8b-instruct"       # Llama 3.1
+    3: "meta-llama/llama-3-8b-instruct"           # Llama 3
+    70b: "meta-llama/llama-3.1-70b-instruct"      # 大型版
+    405b: "meta-llama/llama-3.1-405b-instruct"    # 超大型版
+    
+# ===========================================
+# プロバイダー別デフォルト設定（公式エイリアス統合）
+# ===========================================
+provider_defaults:
+  anthropic:
+    default_alias: "stable"           # 公式の"stable"エイリアスを使用
+    fallback_model: "claude-sonnet-4-20250514"
+    official_aliases: true           # 公式エイリアス対応
+    
+  openai:
+    default_alias: "stable"           # 公式の"4.1"エイリアスを使用
+    fallback_model: "gpt-4.1"
+    official_aliases: true           # 公式エイリアス対応
+    
+  google:
+    default_alias: "stable"           # 公式の"2.5-pro"エイリアスを使用  
+    fallback_model: "gemini-2.5-pro"
+    official_aliases: true           # 公式エイリアス対応
+    
+  openrouter:
+    default_alias: "stable"
+    fallback_model: "auto"  # OpenRouter自動選択
+    
+# ===========================================
+# バージョンアップ管理設定
+# ===========================================
+version_management:
+  # 自動更新設定
+  auto_update:
+    enabled: false                    # 自動更新を無効（安全のため）
+    check_interval_hours: 24          # 24時間ごとにチェック
+    update_policy: "manual"           # manual | stable | latest
+    
+  # バージョンチェック設定  
+  version_check:
+    enabled: true                     # バージョンチェックを有効
+    warn_on_deprecated: true          # 廃止予定モデルで警告
+    log_version_info: true            # バージョン情報をログ出力
+    
+  # フォールバック設定
+  fallback:
+    enabled: true                     # フォールバック有効
+    max_retries: 3                    # 最大リトライ回数
+    fallback_chain: ["stable", "legacy", "latest"]  # フォールバック順序
+    
+# ===========================================
+# 使用例とドキュメント
+# ===========================================
+usage_examples:
+  api_request:
+    # エイリアス使用例
+    - model: "claude:stable"          # Claude安定版
+    - model: "gpt:latest"             # GPT最新版  
+    - model: "gemini:flash"           # Gemini Flash
+    - model: "qwen:coder-free"        # Qwen コーダー無料版
+    
+  configuration:
+    # 設定ファイルでの使用例
+    tier2_model: "claude:sonnet4"     # Tier2にClaude Sonnet 4
+    tier3_model: "gpt:gpt4o"          # Tier3にGPT-4o
+    fallback_model: "gemini:stable"   # フォールバックにGemini安定版
+    
+migration_notes:
+  # バージョンアップ時の移行ノート
+  claude_4_upgrade:
+    from: "claude-3-5-sonnet-20241022"
+    to: "claude-sonnet-4-20250514" 
+    benefits: ["64K出力", "SWE-bench 72.7%", "Extended thinking"]
+    compatibility: "完全後方互換"
+    
+  gpt4o_upgrade:
+    from: "gpt-4-turbo-2024-04-09"
+    to: "gpt-4o-2024-08-06"
+    benefits: ["高速化", "マルチモーダル", "コスト削減"]
+    compatibility: "完全後方互換"

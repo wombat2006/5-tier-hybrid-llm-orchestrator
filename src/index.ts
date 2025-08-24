@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
 import express from 'express';
+import compression from 'compression';
 import { LLMOrchestrator } from './orchestrator/LLMOrchestrator';
+import { ToolOrchestratorService, AnalysisToolRequest } from './services/ToolOrchestratorService';
+import { CLIRequest } from './services/CLIInterfaceManager';
 import { LLMRequest } from './types';
 
 // 環境変数読み込み
@@ -9,7 +12,8 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 4000;
 
-// ミドルウェア設定
+// パフォーマンス最適化ミドルウェア設定
+app.use(compression()); // gzip圧縮でレスポンスサイズ削減
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -23,31 +27,58 @@ app.use((req, res, next) => {
 
 // オーケストレーター初期化
 let orchestrator: LLMOrchestrator;
+let toolOrchestrator: ToolOrchestratorService;
 
 try {
   orchestrator = new LLMOrchestrator();
-  console.log('🚀 LLM Orchestrator initialized successfully');
+  toolOrchestrator = ToolOrchestratorService.getInstance();
+  console.log('🚀 Both LLM and Tool Orchestrators initialized successfully');
 } catch (error) {
-  console.error('❌ Failed to initialize LLM Orchestrator:', error);
+  console.error('❌ Failed to initialize orchestrators:', error);
   process.exit(1);
 }
 
 // ルート定義
 
 // ヘルスチェック
+// キャッシュされたヘルスチェック結果
+let healthCheckCache: { data: any; timestamp: number } | null = null;
+const HEALTH_CHECK_CACHE_TTL = 30000; // 30秒キャッシュ
+
 app.get('/health', async (req, res) => {
   try {
+    // 高速化: キャッシュされた結果があり、まだ有効な場合は即座に返す
+    const now = Date.now();
+    if (healthCheckCache && (now - healthCheckCache.timestamp) < HEALTH_CHECK_CACHE_TTL) {
+      res.status(healthCheckCache.data.healthy ? 200 : 503).json({
+        ...healthCheckCache.data,
+        cached: true,
+        cache_age_ms: now - healthCheckCache.timestamp
+      });
+      return;
+    }
+
     const healthCheck = await orchestrator.healthCheck();
-    res.status(healthCheck.healthy ? 200 : 503).json({
+    const responseData = {
       success: healthCheck.healthy,
       timestamp: new Date().toISOString(),
-      details: healthCheck.details
-    });
+      details: healthCheck.details,
+      cached: false
+    };
+
+    // 結果をキャッシュ
+    healthCheckCache = {
+      data: responseData,
+      timestamp: now
+    };
+
+    res.status(healthCheck.healthy ? 200 : 503).json(responseData);
   } catch (error) {
     res.status(500).json({
       success: false,
       error: 'Health check failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      cached: false
     });
   }
 });
@@ -430,6 +461,301 @@ app.post('/reset-metrics', (req, res) => {
   }
 });
 
+// ============================================
+// AI推論インターフェースエンドポイント
+// ============================================
+
+// 統計情報キャッシュ
+let statsCache: { ai: any; tools: any; timestamp: number } | null = null;
+const STATS_CACHE_TTL = 10000; // 10秒キャッシュ
+
+// AI Interface統計情報取得
+app.get('/ai/stats', async (req, res) => {
+  try {
+    // 高速化: キャッシュチェック
+    const now = Date.now();
+    if (statsCache && (now - statsCache.timestamp) < STATS_CACHE_TTL) {
+      res.json({
+        ...statsCache.ai,
+        cached: true,
+        cache_age_ms: now - statsCache.timestamp
+      });
+      return;
+    }
+
+    const aiStats = await toolOrchestrator.getToolStats();
+    const responseData = {
+      success: true,
+      data: {
+        ai_interfaces: aiStats.ai_interfaces,
+        active_sessions: aiStats.active_sessions,
+        total_ai_interfaces: Object.values(aiStats.ai_interfaces).filter(Boolean).length
+      },
+      cached: false
+    };
+
+    // キャッシュ更新
+    if (!statsCache) {
+      statsCache = { ai: responseData, tools: null, timestamp: now };
+    } else {
+      statsCache.ai = responseData;
+      statsCache.timestamp = now;
+    }
+
+    res.json(responseData);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get AI interface stats',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      cached: false
+    });
+  }
+});
+
+// Gemini AI Interface実行
+app.post('/ai/gemini', async (req, res) => {
+  try {
+    const { prompt, model, sandbox, interactive, yolo, all_files, debug } = req.body;
+    
+    if (!prompt || typeof prompt !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Prompt is required and must be a string'
+      });
+    }
+
+    const cliRequest: CLIRequest = {
+      interface_type: 'gemini_cli',
+      prompt,
+      options: {
+        model,
+        sandbox: Boolean(sandbox),
+        interactive: Boolean(interactive), 
+        yolo: Boolean(yolo),
+        all_files: Boolean(all_files),
+        debug: Boolean(debug)
+      },
+      context: {
+        working_dir: process.cwd()
+      }
+    };
+
+    console.log(`[API] Gemini AI request: ${prompt.substring(0, 100)}...`);
+    const response = await toolOrchestrator.processAIRequest(cliRequest);
+
+    return res.status(response.success ? 200 : 500).json({
+      success: response.success,
+      interface_used: response.interface_used,
+      response_text: response.response_text,
+      metadata: response.metadata,
+      ...(response.error && { error: response.error })
+    });
+
+  } catch (error) {
+    console.error('❌ Error in /ai/gemini endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Gemini AI execution failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Claude AI Interface実行
+app.post('/ai/claude', async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    
+    if (!prompt || typeof prompt !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Prompt is required and must be a string'
+      });
+    }
+
+    const cliRequest: CLIRequest = {
+      interface_type: 'claude_code',
+      prompt,
+      context: {
+        working_dir: process.cwd()
+      }
+    };
+
+    console.log(`[API] Claude AI request: ${prompt.substring(0, 100)}...`);
+    const response = await toolOrchestrator.processAIRequest(cliRequest);
+
+    return res.status(response.success ? 200 : 500).json({
+      success: response.success,
+      interface_used: response.interface_used,
+      response_text: response.response_text,
+      metadata: response.metadata,
+      ...(response.error && { error: response.error })
+    });
+
+  } catch (error) {
+    console.error('❌ Error in /ai/claude endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Claude AI execution failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ============================================
+// 分析ツールエンドポイント
+// ============================================
+
+// Context7 プロジェクト分析ツール実行
+app.post('/tools/context7', async (req, res) => {
+  try {
+    const { query, project_identifier, output_format, max_tokens } = req.body;
+    
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Query is required and must be a string'
+      });
+    }
+
+    const analysisRequest: AnalysisToolRequest = {
+      tool_type: 'context7',
+      command: query,
+      args: [project_identifier || '.'],
+      options: {
+        output_format: output_format === 'json' ? 'json' : 'txt',
+        working_dir: process.cwd()
+      }
+    };
+
+    console.log(`[API] Context7 analysis request: ${query.substring(0, 100)}...`);
+    const response = await toolOrchestrator.processAnalysisRequest(analysisRequest);
+
+    return res.status(response.success ? 200 : 500).json({
+      success: response.success,
+      tool_used: response.tool_used,
+      result: response.result,
+      metadata: response.metadata,
+      ...(response.error && { error: response.error })
+    });
+
+  } catch (error) {
+    console.error('❌ Error in /tools/context7 endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Context7 analysis failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 分析ツール統計情報取得
+app.get('/tools/stats', async (req, res) => {
+  try {
+    // 高速化: キャッシュチェック
+    const now = Date.now();
+    if (statsCache && statsCache.tools && (now - statsCache.timestamp) < STATS_CACHE_TTL) {
+      res.json({
+        ...statsCache.tools,
+        cached: true,
+        cache_age_ms: now - statsCache.timestamp
+      });
+      return;
+    }
+
+    const toolStats = await toolOrchestrator.getToolStats();
+    const responseData = {
+      success: true,
+      data: {
+        analysis_tools: toolStats.analysis_tools,
+        total_analysis_tools: Object.values(toolStats.analysis_tools).filter(Boolean).length
+      },
+      cached: false
+    };
+
+    // キャッシュ更新
+    if (!statsCache) {
+      statsCache = { ai: null, tools: responseData, timestamp: now };
+    } else {
+      statsCache.tools = responseData;
+      statsCache.timestamp = now;
+    }
+
+    res.json(responseData);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get analysis tool stats',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      cached: false
+    });
+  }
+});
+
+// 最適AIインターフェース自動選択実行
+app.post('/ai/auto', async (req, res) => {
+  try {
+    const { 
+      prompt, 
+      coding_focused, 
+      interactive_preferred, 
+      sandbox_required, 
+      context_analysis,
+      encryption_required 
+    } = req.body;
+    
+    if (!prompt || typeof prompt !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Prompt is required and must be a string'
+      });
+    }
+
+    // 最適なAIインターフェースを自動選択
+    const selectedInterface = await toolOrchestrator.selectOptimalAI(prompt, {
+      coding_focused: Boolean(coding_focused),
+      interactive_preferred: Boolean(interactive_preferred),
+      sandbox_required: Boolean(sandbox_required)
+    });
+
+    const cliRequest: CLIRequest = {
+      interface_type: selectedInterface,
+      prompt,
+      options: {
+        sandbox: Boolean(sandbox_required),
+        interactive: Boolean(interactive_preferred)
+      },
+      context: {
+        working_dir: process.cwd()
+      }
+    };
+
+    console.log(`[API] Auto AI request (${selectedInterface}): ${prompt.substring(0, 100)}...`);
+    const response = await toolOrchestrator.processAIRequest(cliRequest);
+
+    return res.status(response.success ? 200 : 500).json({
+      success: response.success,
+      interface_used: response.interface_used,
+      response_text: response.response_text,
+      metadata: {
+        ...response.metadata,
+        auto_selected_interface: selectedInterface,
+        selection_reason: `Auto-selected ${selectedInterface} based on preferences`
+      },
+      ...(response.error && { error: response.error })
+    });
+
+  } catch (error) {
+    console.error('❌ Error in /ai/auto endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Auto AI interface selection failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // 404 ハンドラー
 app.use((req, res) => {
   res.status(404).json({
@@ -445,7 +771,13 @@ app.use((req, res) => {
       'POST /assistant/file-search',
       'POST /assistant/code-interpreter',
       'POST /assistant/chat',
-      'POST /reset-metrics'
+      'POST /reset-metrics',
+      'GET /ai/stats',
+      'POST /ai/claude',
+      'POST /ai/gemini',
+      'POST /ai/auto',
+      'GET /tools/stats',
+      'POST /tools/context7'
     ]
   });
 });
@@ -480,6 +812,16 @@ app.listen(port, () => {
   console.log(`   POST   http://localhost:${port}/assistant/code-interpreter`);
   console.log(`   POST   http://localhost:${port}/assistant/chat`);
   console.log(`   POST   http://localhost:${port}/reset-metrics`);
+  console.log('');
+  console.log('🤖 AI Interface endpoints:');
+  console.log(`   GET    http://localhost:${port}/ai/stats`);
+  console.log(`   POST   http://localhost:${port}/ai/claude`);
+  console.log(`   POST   http://localhost:${port}/ai/gemini`);
+  console.log(`   POST   http://localhost:${port}/ai/auto`);
+  console.log('');
+  console.log('🔍 Analysis Tool endpoints:');
+  console.log(`   GET    http://localhost:${port}/tools/stats`);
+  console.log(`   POST   http://localhost:${port}/tools/context7`);
   console.log('\n🆕 NEW: Vector Storage & RAG capabilities added!');
   console.log('\n💡 Tier Priority: 0 (Qwen3 Coder) → 1 (Gemini Flash) → 2 (Claude) → 3 (Premium)');
   console.log('🌟 =====================================\n');

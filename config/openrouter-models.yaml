@@ -20,7 +20,7 @@ coding_models:
     description: "コーディング特化、262K長文脈対応"
 
   qwen3_coder_free:
-    openrouter_id: "qwen/qwen-3-coder-32b-instruct:free"
+    openrouter_id: "qwen:coder-free"  # エイリアス: qwen/qwen-3-coder-32b-instruct:free
     name: "Qwen3-Coder 32B (Free)"
     provider_family: "qwen"
     tier: 0
@@ -78,16 +78,18 @@ general_models:
 # ===========================================
 reasoning_models:
   claude_sonnet:
-    openrouter_id: "anthropic/claude-3.5-sonnet"
-    name: "Claude 3.5 Sonnet"
+    openrouter_id: "claude:sonnet4"  # エイリアス: anthropic/claude-sonnet-4
+    name: "Claude Sonnet 4"
     provider_family: "anthropic"
     tier: 2
     pricing:
-      prompt: 3.0
+      prompt: 3.0   # 同料金で高性能
       completion: 15.0
     context_length: 200000
-    capabilities: [complex_reasoning, analysis, writing, coding]
-    description: "高品質推論・分析モデル"
+    capabilities: [complex_reasoning, analysis, writing, coding, extended_thinking, advanced_coding, memory_management]
+    specialties: [technical_writing, architectural_design, swe_bench]
+    rate_limits: {requests_per_minute: 50, daily_limit: 500}
+    description: "最新Claude 4モデル - 同料金で大幅性能向上 (SWE-bench 72.7%、最大64K出力)"
 
   gemini_pro:
     openrouter_id: "google/gemini-pro-1.5"

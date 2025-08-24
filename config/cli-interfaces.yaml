@@ -1,0 +1,257 @@
+# CLI インターフェース管理設定
+# Claude Code、Gemini CLI、context7、chipher の統合管理
+
+# ===========================================
+# Claude Code 設定
+# ===========================================
+claude_code:
+  enabled: true
+  command: "claude"
+  args: []
+  auth_required: true
+  description: "Anthropic Claude Code CLI - 高品質コーディング・複雑推論"
+  capabilities:
+    - "advanced_coding"
+    - "complex_reasoning"
+    - "architectural_design"
+    - "code_review"
+    - "technical_writing"
+  use_cases:
+    - "Complex software development"
+    - "System architecture design"
+    - "Advanced debugging"
+    - "Technical documentation"
+
+# ===========================================
+# Gemini CLI 設定
+# ===========================================
+gemini_cli:
+  enabled: true
+  command: "gemini"
+  args: []
+  auth_required: true
+  description: "Google Gemini CLI - 高速・多機能・サンドボックス対応"
+  
+  # デフォルト設定
+  default_model: "gemini-2.5-pro"
+  sandbox_enabled: false
+  yolo_mode: false
+  all_files_context: false
+  debug_mode: false
+  
+  capabilities:
+    - "multimodal_processing"
+    - "fast_execution"
+    - "sandbox_execution"
+    - "interactive_mode"
+    - "file_context_analysis"
+  
+  use_cases:
+    - "Quick iterations and testing"
+    - "Interactive development sessions"
+    - "Sandbox-safe code execution"
+    - "Multimodal content analysis"
+
+# ===========================================
+# context7 設定（コンテキスト分析特化）
+# ===========================================
+context7:
+  enabled: true   # c7コマンドでインストール済み
+  command: "c7"
+  args: []
+  auth_required: true
+  description: "Context7 - 高度コンテキスト分析・プロジェクト理解"
+  
+  install_instructions: |
+    # Context7 インストール手順
+    npm install -g context7
+    # または
+    pip install context7
+    
+  capabilities:
+    - "deep_context_analysis"
+    - "project_structure_understanding"
+    - "code_relationship_mapping"
+    - "intelligent_code_search"
+  
+  use_cases:
+    - "Large codebase analysis"
+    - "Legacy system understanding"
+    - "Code relationship discovery"
+    - "Smart refactoring planning"
+
+# ===========================================
+# chipher 設定（暗号化・セキュリティ）
+# ===========================================
+chipher:
+  enabled: false  # 未インストールのため無効
+  command: "chipher"
+  args: []
+  auth_required: true
+  description: "Chipher - 暗号化・セキュリティ特化CLI"
+  
+  install_instructions: |
+    # Chipher インストール手順
+    # GitHubからの最新版取得が必要
+    git clone https://github.com/chipher/chipher-cli
+    cd chipher-cli && npm install -g
+    
+  capabilities:
+    - "encryption_decryption"
+    - "security_analysis"
+    - "secure_communication"
+    - "cryptographic_operations"
+  
+  use_cases:
+    - "Sensitive data processing"
+    - "Security audit tasks"
+    - "Encrypted communication"
+    - "Cryptographic implementation"
+
+# ===========================================
+# 自動選択ルール設定
+# ===========================================
+auto_selection_rules:
+  # タスクタイプ別推奨インターフェース
+  task_preferences:
+    coding:
+      primary: "claude_code"
+      fallback: "gemini_cli"
+      
+    quick_iteration:
+      primary: "gemini_cli"
+      fallback: "claude_code"
+      
+    interactive_development:
+      primary: "gemini_cli"
+      fallback: "claude_code"
+      
+    context_analysis:
+      primary: "context7"
+      fallback: "claude_code"
+      
+    security_tasks:
+      primary: "chipher"
+      fallback: "claude_code"
+      
+    sandbox_required:
+      primary: "gemini_cli"
+      fallback: null
+      
+  # キーワードベース自動選択
+  keyword_mapping:
+    # Gemini CLI推奨キーワード
+    gemini_keywords:
+      - "sandbox"
+      - "quick"
+      - "test"
+      - "interactive"
+      - "multimodal"
+      - "image"
+      - "video"
+      
+    # Claude Code推奨キーワード  
+    claude_keywords:
+      - "complex"
+      - "architecture"
+      - "design"
+      - "review"
+      - "refactor"
+      - "debug"
+      
+    # context7推奨キーワード
+    context7_keywords:
+      - "analyze project"
+      - "understand codebase"
+      - "map relationships"
+      - "legacy code"
+      
+    # chipher推奨キーワード
+    chipher_keywords:
+      - "encrypt"
+      - "decrypt"
+      - "security"
+      - "crypto"
+      - "secure"
+
+# ===========================================
+# パフォーマンス・制限設定
+# ===========================================
+execution_limits:
+  # タイムアウト設定（ミリ秒）
+  timeout:
+    claude_code: 600000    # 10分
+    gemini_cli: 300000     # 5分
+    context7: 1800000      # 30分（大規模解析対応）
+    chipher: 120000        # 2分
+    
+  # 並列実行制限
+  max_parallel_sessions: 3
+  
+  # リトライ設定
+  retry_config:
+    max_retries: 2
+    retry_delay_ms: 1000
+    exponential_backoff: true
+
+# ===========================================
+# ログ・監査設定
+# ===========================================
+logging:
+  enabled: true
+  log_level: "info"  # debug, info, warn, error
+  log_commands: true
+  log_responses: false  # セキュリティのため無効
+  log_file: "./logs/cli-interface.log"
+  
+audit:
+  enabled: true
+  track_usage: true
+  performance_metrics: true
+  security_events: true
+
+# ===========================================
+# 使用例とドキュメント
+# ===========================================
+usage_examples:
+  # Gemini CLI使用例
+  gemini_cli:
+    basic: 'gemini -p "Hello World"'
+    with_model: 'gemini -m gemini-2.5-flash -p "Quick test"'
+    sandbox: 'gemini -s -p "Execute this code safely"'
+    interactive: 'gemini -i "Start interactive session"'
+    yolo_mode: 'gemini -y -p "Auto-approve all actions"'
+    
+  # Claude Code使用例  
+  claude_code:
+    basic: 'claude "Design a REST API"'
+    file_context: 'claude "Review this code" < main.py'
+    
+  # context7使用例
+  context7:
+    project_analysis: 'context7 analyze --project .'
+    code_search: 'context7 search "authentication logic"'
+    
+  # chipher使用例
+  chipher:
+    encrypt: 'chipher encrypt --file sensitive.txt'
+    decrypt: 'chipher decrypt --file encrypted.dat'
+
+migration_guide:
+  claude_to_gemini:
+    overview: "Claude CodeからGemini CLIへの移行ガイド"
+    key_differences:
+      - "Gemini CLI: -p フラグでプロンプト指定"
+      - "Gemini CLI: -s フラグでサンドボックス実行"
+      - "Gemini CLI: -i フラグでインタラクティブモード"
+      - "Claude Code: 標準入力でプロンプト送信"
+    
+    command_mapping:
+      claude: "claude 'prompt'"
+      gemini: "gemini -p 'prompt'"
+      
+    best_practices:
+      - "短時間タスク: Gemini CLI推奨"
+      - "複雑な設計: Claude Code推奨"  
+      - "インタラクティブ: Gemini CLI推奨"
+      - "サンドボックス実行: Gemini CLI必須"

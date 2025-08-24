@@ -48,7 +48,7 @@ models:
   # Tier 1: Gemini Flash - 一般調査・検証・無料枠
   gemini_flash:
     id: gemini_flash
-    name: gemini-1.5-flash
+    name: gemini:flash  # エイリアス使用: gemini-1.5-flash-002
     provider: google
     tier: 1
     cost_per_1k_tokens:
@@ -74,17 +74,17 @@ models:
       - "translate"
     api_client: GeminiAPIClient
 
-  # Tier 2: Claude Sonnet - 複雑推論・統合判断・現在のメインモデル
+  # Tier 2: Claude Sonnet 4 - 複雑推論・統合判断・高性能メインモデル (2025年最新)
   claude_sonnet:
     id: claude_sonnet
-    name: claude-3-5-sonnet-20241022
+    name: claude:stable  # エイリアス使用: claude-sonnet-4-20250514
     provider: anthropic
     tier: 2
     cost_per_1k_tokens:
-      input: 3.00   # $3.00/1K入力トークン
-      output: 15.00 # $15.00/1K出力トークン
-    latency_ms: 1000
-    max_tokens: 8192
+      input: 3.00   # $3.00/1K入力トークン (3.5と同料金)
+      output: 15.00 # $15.00/1K出力トークン (3.5と同料金)
+    latency_ms: 900   # 若干改善
+    max_tokens: 64000  # 大幅拡張: 8K -> 64K
     capabilities:
       - complex_reasoning
       - integration
@@ -92,6 +92,9 @@ models:
       - technical_writing
       - code_review
       - general_tasks
+      - extended_thinking  # 新機能
+      - advanced_coding    # SWE-bench 72.7%
+      - memory_management  # 改善されたメモリ機能
     priority_keywords:
       - "設計"
       - "アーキテクチャ"
@@ -101,12 +104,14 @@ models:
       - "architecture"
       - "complex"
       - "integration"
+      - "extended"
+      - "reasoning"
     api_client: AnthropicAPIClient
 
   # Tier 3: GPT-4o/Gemini Pro - 最高品質設計判断
   gpt4o:
     id: gpt4o
-    name: gpt-4o
+    name: gpt:stable  # エイリアス使用: gpt-4o-2024-08-06
     provider: openai
     tier: 3
     cost_per_1k_tokens:
@@ -130,7 +135,7 @@ models:
 
   gemini_pro:
     id: gemini_pro
-    name: gemini-1.5-pro
+    name: gemini:stable  # エイリアス使用: gemini-1.5-pro-002
     provider: google
     tier: 3
     cost_per_1k_tokens:

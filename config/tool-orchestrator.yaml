@@ -1,0 +1,276 @@
+# ツールオーケストレーター設定ファイル
+# AI推論インターフェースと分析ツールの分離管理
+
+# ===========================================
+# AI推論インターフェース設定
+# ===========================================
+ai_interfaces:
+  claude_code:
+    enabled: true
+    command: "claude"
+    args: []
+    auth_required: true
+    description: "Anthropic Claude Code CLI - 高品質コーディング・複雑推論"
+    capabilities:
+      - "advanced_coding"
+      - "complex_reasoning"
+      - "architectural_design"
+      - "code_review"
+      - "technical_writing"
+    use_cases:
+      - "Complex software development"
+      - "System architecture design"
+      - "Advanced debugging"
+      - "Technical documentation"
+    input_method: "stdin"  # 標準入力でプロンプト送信
+
+  gemini_cli:
+    enabled: true
+    command: "gemini"
+    args: []
+    auth_required: true
+    description: "Google Gemini CLI - 高速・多機能・サンドボックス対応"
+    
+    # デフォルト設定
+    default_model: "gemini-2.5-pro"
+    sandbox_enabled: false
+    yolo_mode: false
+    all_files_context: false
+    debug_mode: false
+    
+    capabilities:
+      - "multimodal_processing"
+      - "fast_execution"
+      - "sandbox_execution"
+      - "interactive_mode"
+      - "file_context_analysis"
+    
+    use_cases:
+      - "Quick iterations and testing"
+      - "Interactive development sessions"
+      - "Sandbox-safe code execution"
+      - "Multimodal content analysis"
+    
+    input_method: "argument"  # -p フラグでプロンプト指定
+
+# ===========================================
+# 分析ツール設定（非AI推論ツール）
+# ===========================================
+analysis_tools:
+  context7:
+    enabled: true   # c7コマンドでインストール済み
+    command: "c7"
+    args: []
+    auth_required: true
+    tool_category: "project_analyzer"
+    description: "Context7 - プロジェクト構造・コード関係分析特化"
+    
+    capabilities:
+      - "project_structure_analysis"
+      - "code_relationship_mapping"
+      - "intelligent_code_search"
+      - "metadata_extraction"
+    
+    use_cases:
+      - "Large codebase analysis"
+      - "Legacy system understanding"
+      - "Code relationship discovery"
+      - "Project documentation generation"
+    
+    input_method: "positional_args"  # c7 <projectId> [query...]
+    
+    command_structure:
+      project_identifier: "required"  # 第1引数
+      query: "optional"               # 第2引数以降
+      flags:
+        - "-t, --type": "Output format (txt, json)"
+        - "-s, --save": "Save output to file"
+        - "-k, --tokens": "Max tokens"
+
+  chipher:
+    enabled: false  # 未インストールのため無効
+    command: "chipher"
+    args: []
+    auth_required: true
+    tool_category: "security_analyzer"
+    description: "Chipher - 暗号化・セキュリティ分析特化"
+    
+    install_instructions: |
+      # Chipher インストール手順
+      # GitHubからの最新版取得が必要
+      git clone https://github.com/chipher/chipher-cli
+      cd chipher-cli && npm install -g
+    
+    capabilities:
+      - "encryption_decryption"
+      - "security_analysis"
+      - "secure_communication"
+      - "cryptographic_operations"
+    
+    use_cases:
+      - "Sensitive data processing"
+      - "Security audit tasks"
+      - "Encrypted communication"
+      - "Cryptographic implementation"
+    
+    input_method: "argument"  # chipher <command> [args...]
+
+# ===========================================
+# 自動選択ルール設定
+# ===========================================
+auto_selection_rules:
+  # AI推論タスク別推奨インターフェース
+  ai_task_preferences:
+    coding:
+      primary: "claude_code"
+      fallback: "gemini_cli"
+      
+    quick_iteration:
+      primary: "gemini_cli"
+      fallback: "claude_code"
+      
+    interactive_development:
+      primary: "gemini_cli"
+      fallback: "claude_code"
+      
+    sandbox_required:
+      primary: "gemini_cli"
+      fallback: null
+
+  # 分析タスク別推奨ツール
+  analysis_task_preferences:
+    project_analysis:
+      primary: "context7"
+      fallback: null
+      
+    security_analysis:
+      primary: "chipher"
+      fallback: "context7"
+      
+    code_relationship_mapping:
+      primary: "context7"
+      fallback: null
+
+  # キーワードベース自動選択
+  keyword_mapping:
+    # AI推論キーワード
+    ai_keywords:
+      gemini_cli:
+        - "sandbox"
+        - "quick"
+        - "test"
+        - "interactive"
+        - "multimodal"
+        - "image"
+        - "video"
+      
+      claude_code:
+        - "complex"
+        - "architecture"
+        - "design"
+        - "review"
+        - "refactor"
+        - "debug"
+    
+    # 分析ツールキーワード
+    analysis_keywords:
+      context7:
+        - "analyze project"
+        - "understand codebase" 
+        - "map relationships"
+        - "legacy code"
+        - "project structure"
+        - "code search"
+      
+      chipher:
+        - "encrypt"
+        - "decrypt"
+        - "security"
+        - "crypto"
+        - "secure"
+
+# ===========================================
+# パフォーマンス・制限設定
+# ===========================================
+execution_limits:
+  # タイムアウト設定（ミリ秒）
+  timeout:
+    claude_code: 600000    # 10分
+    gemini_cli: 300000     # 5分
+    context7: 1800000      # 30分（大規模解析対応）
+    chipher: 120000        # 2分
+    
+  # 並列実行制限
+  max_parallel_sessions: 3
+  
+  # リトライ設定
+  retry_config:
+    max_retries: 2
+    retry_delay_ms: 1000
+    exponential_backoff: true
+
+# ===========================================
+# ログ・監査設定
+# ===========================================
+logging:
+  enabled: true
+  log_level: "info"  # debug, info, warn, error
+  log_commands: true
+  log_responses: false  # セキュリティのため無効
+  log_file: "./logs/tool-orchestrator.log"
+  
+audit:
+  enabled: true
+  track_usage: true
+  performance_metrics: true
+  security_events: true
+
+# ===========================================
+# 使用例とドキュメント
+# ===========================================
+usage_examples:
+  # AI推論インターフェース使用例
+  ai_interfaces:
+    gemini_cli:
+      basic: 'gemini -p "Hello World"'
+      with_model: 'gemini -m gemini-2.5-flash -p "Quick test"'
+      sandbox: 'gemini -s -p "Execute this code safely"'
+      interactive: 'gemini -i "Start interactive session"'
+      yolo_mode: 'gemini -y -p "Auto-approve all actions"'
+    
+    claude_code:
+      basic: 'echo "Design a REST API" | claude'
+      file_context: 'claude "Review this code" < main.py'
+
+  # 分析ツール使用例  
+  analysis_tools:
+    context7:
+      project_analysis: 'c7 . "analyze project structure"'
+      code_search: 'c7 myproject "find authentication logic"'
+      json_output: 'c7 . "project overview" -t json'
+    
+    chipher:
+      encrypt: 'chipher encrypt --file sensitive.txt'
+      decrypt: 'chipher decrypt --file encrypted.dat'
+
+migration_guide:
+  concept_change:
+    overview: "CLI統合からツール種別統合への変更"
+    key_differences:
+      - "AI推論インターフェース: Claude Code, Gemini CLI"
+      - "分析ツール: context7, chipher"
+      - "それぞれ異なる入力方法と用途を持つ"
+    
+  api_changes:
+    ai_requests:
+      old: "POST /cli/gemini"
+      new: "POST /ai/gemini"
+    
+    analysis_requests:
+      old: "POST /cli/context7" 
+      new: "POST /tools/context7"
+    
+  best_practices:
+    - "AI推論タスク: /ai/ エンドポイント使用"
+    - "分析・情報検索: /tools/ エンドポイント使用"
+    - "自動選択: タスクタイプ別エンドポイント推奨"
