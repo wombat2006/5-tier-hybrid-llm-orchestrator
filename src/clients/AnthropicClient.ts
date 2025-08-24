@@ -15,7 +15,7 @@ export class AnthropicAPIClient implements BaseLLMClient {
   private apiKey: string;
   private stats: UsageStats;
 
-  constructor(modelName: string = 'claude-3-5-sonnet-20241022') {
+  constructor(modelName: string = 'claude-sonnet-4-20250514') {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       throw new Error('Anthropic API key not provided');
