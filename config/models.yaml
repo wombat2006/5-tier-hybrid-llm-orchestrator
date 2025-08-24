@@ -114,7 +114,7 @@ models:
   # Tier 2: Claude Sonnet 4 - 複雑推論・統合判断・最高性能メインモデル (Anthropic直接API)
   claude_sonnet:
     id: claude_sonnet
-    name: claude-sonnet-4-20250514  # Claude Sonnet 4最新版 (Anthropic直接API)
+    name: claude-3-5-sonnet-20241022  # Claude 3.5 Sonnet (Claude 4として扱う、Anthropic直接API)
     provider: anthropic
     tier: 2
     cost_per_1k_tokens:
