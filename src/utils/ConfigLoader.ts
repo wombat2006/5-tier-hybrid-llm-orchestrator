@@ -52,6 +52,14 @@ export class ConfigLoader {
         console.log(`[ConfigLoader] Tier ${tier}: ${count} models`);
       });
 
+      // タスク分類設定の表示
+      if (parsedConfig.routing && parsedConfig.routing.task_classification) {
+        console.log(`[ConfigLoader] Task routing configuration:`);
+        Object.entries(parsedConfig.routing.task_classification).forEach(([taskType, rules]) => {
+          console.log(`  ${taskType}: preferred_tier=${rules.preferred_tier}, keywords=${rules.keywords?.length || 0}`);
+        });
+      }
+
       return this.config;
 
     } catch (error) {

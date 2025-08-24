@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import compression from 'compression';
 import { LLMOrchestrator } from './orchestrator/LLMOrchestrator';
+import LogAnalysisService, { LogAnalysisRequest } from './services/LogAnalysisService';
 import { ToolOrchestratorService, AnalysisToolRequest } from './services/ToolOrchestratorService';
 import { CLIRequest } from './services/CLIInterfaceManager';
 import { LLMRequest } from './types';
@@ -28,11 +29,12 @@ app.use((req, res, next) => {
 // オーケストレーター初期化
 let orchestrator: LLMOrchestrator;
 let toolOrchestrator: ToolOrchestratorService;
+const logAnalysisService = new LogAnalysisService();
 
 try {
   orchestrator = new LLMOrchestrator();
   toolOrchestrator = ToolOrchestratorService.getInstance();
-  console.log('🚀 Both LLM and Tool Orchestrators initialized successfully');
+  console.log('🚀 LLM Orchestrator, Tool Orchestrator, and Log Analysis Service initialized successfully');
 } catch (error) {
   console.error('❌ Failed to initialize orchestrators:', error);
   process.exit(1);
@@ -193,6 +195,85 @@ app.get('/metrics', (req, res) => {
   }
 });
 
+// Redis統合リアルタイムメトリクス
+app.get('/metrics/realtime', async (req, res) => {
+  try {
+    // LLMOrchestratorからRedisLoggerにアクセスするためのプロキシメソッドを追加する必要があります
+    const realtimeMetrics = await orchestrator.getRealTimeMetrics();
+    res.json({
+      success: true,
+      data: realtimeMetrics,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get real-time metrics',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// クエリ分析履歴取得
+app.get('/analytics/queries/:date?', async (req, res) => {
+  try {
+    const date = req.params.date || new Date().toISOString().split('T')[0];
+    const limit = parseInt(req.query.limit as string) || 100;
+    
+    const queryHistory = await orchestrator.getQueryAnalysisHistory(date, limit);
+    res.json({
+      success: true,
+      date,
+      data: queryHistory,
+      count: queryHistory.length
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get query analysis history',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 日次コストレポート
+app.get('/costs/daily/:date?', async (req, res) => {
+  try {
+    const date = req.params.date || new Date().toISOString().split('T')[0];
+    const costReport = await orchestrator.getDailyCostReport(date);
+    
+    res.json({
+      success: true,
+      date,
+      data: costReport
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get daily cost report',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Upstash Redis統合ステータス
+app.get('/redis/status', async (req, res) => {
+  try {
+    const redisStats = await orchestrator.getRedisStats();
+    res.json({
+      success: true,
+      data: redisStats,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get Redis status',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // メインのLLM処理エンドポイント
 app.post('/generate', async (req, res) => {
   try {
@@ -200,7 +281,9 @@ app.post('/generate', async (req, res) => {
       prompt, 
       task_type, 
       preferred_tier, 
-      user_metadata 
+      user_metadata,
+      conversation_id,  // 🆕 会話ID対応
+      context           // 🆕 直接コンテキスト指定
     } = req.body;
 
     // 入力検証
@@ -218,15 +301,25 @@ app.post('/generate', async (req, res) => {
       });
     }
 
+    // 🆕 会話IDの処理
+    let finalUserMetadata = user_metadata || {};
+    if (conversation_id) {
+      finalUserMetadata.session_id = conversation_id;
+    }
+
     const request: LLMRequest = {
       prompt,
       task_type: task_type || 'auto',
       preferred_tier,
-      user_metadata: user_metadata || {}
+      user_metadata: finalUserMetadata,
+      context: context  // 🆕 直接コンテキスト対応
     };
 
     console.log(`\n📥 New request received: ${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}`);
     console.log(`📋 Task type: ${request.task_type}, Preferred tier: ${preferred_tier || 'auto'}`);
+    if (conversation_id) {
+      console.log(`💬 Conversation ID: ${conversation_id}`);
+    }
 
     const response = await orchestrator.process(request);
 
@@ -235,6 +328,8 @@ app.post('/generate', async (req, res) => {
       model_used: response.model_used,
       tier_used: response.tier_used,
       response: response.response_text,
+      result: response.response_text, // 🆕 alias for compatibility
+      conversation_id: conversation_id, // 🆕 会話ID返却
       metadata: {
         ...response.metadata,
         cost_info: response.cost_info,
@@ -252,6 +347,112 @@ app.post('/generate', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 🆕 ログ解析診断エンドポイント
+app.post('/analyze-logs', async (req, res) => {
+  try {
+    const {
+      user_command,
+      error_output,
+      system_context,
+      log_files,
+      environment_info
+    } = req.body;
+
+    // 入力検証
+    if (!user_command || typeof user_command !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'user_command is required and must be a string'
+      });
+    }
+
+    if (!error_output || typeof error_output !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'error_output is required and must be a string'
+      });
+    }
+
+    const logRequest: LogAnalysisRequest = {
+      user_command,
+      error_output,
+      system_context,
+      log_files,
+      environment_info
+    };
+
+    console.log(`\n🔍 Log analysis request received`);
+    console.log(`📝 Command: ${user_command}`);
+    console.log(`❌ Error: ${error_output.substring(0, 100)}${error_output.length > 100 ? '...' : ''}`);
+
+    // ログ解析実行
+    const analysisPlan = await logAnalysisService.analyzeLog(logRequest);
+
+    // 高度なLLM処理が必要な場合は、オーケストレーターに委譲
+    const detailedPrompt = `
+Please provide detailed troubleshooting assistance for the following system issue:
+
+**User Command:** ${user_command}
+**Error Output:** ${error_output}
+**System Context:** ${system_context || 'Not provided'}
+
+**Analysis Results:**
+- Intent: ${analysisPlan.identified_intent}
+- Error Type: ${analysisPlan.error_classification.error_type}
+- Severity: ${analysisPlan.error_classification.severity}
+- Root Causes: ${analysisPlan.root_cause_hypothesis.join('; ')}
+- Strategy: ${analysisPlan.solution_strategy}
+
+Please provide:
+1. Detailed step-by-step resolution procedure
+2. Specific commands to execute with explanations
+3. Prevention measures for the future
+4. Alternative approaches if the primary solution fails
+
+Focus on practical, executable solutions for system administrators.
+`;
+
+    const llmRequest: LLMRequest = {
+      prompt: detailedPrompt,
+      task_type: analysisPlan.routing_decision.task_type,
+      user_metadata: {
+        priority: analysisPlan.urgency_level >= 4 ? 'critical' : 'high',
+        endpoint: 'analyze-logs'
+      }
+    };
+
+    const llmResponse = await orchestrator.process(llmRequest);
+
+    const responseData = {
+      success: true,
+      analysis: analysisPlan,
+      detailed_solution: llmResponse.response_text,
+      model_used: llmResponse.model_used,
+      tier_used: llmResponse.tier_used,
+      metadata: {
+        urgency_level: analysisPlan.urgency_level,
+        error_classification: analysisPlan.error_classification,
+        recommended_commands: analysisPlan.recommended_commands,
+        routing_reasoning: analysisPlan.routing_decision.reasoning,
+        cost_info: llmResponse.cost_info,
+        performance_info: llmResponse.performance_info
+      }
+    };
+
+    console.log(`🎯 Log analysis completed - Model: ${llmResponse.model_used}, Urgency: ${analysisPlan.urgency_level}/5`);
+
+    return res.status(200).json(responseData);
+
+  } catch (error) {
+    console.error('❌ Error in /analyze-logs endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Log analysis failed',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }

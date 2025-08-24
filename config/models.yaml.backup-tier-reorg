@@ -51,7 +51,7 @@ models:
   # Tier 0: Gemini 2.5 Pro Exp - 最高性能・実験版・無料（実装実験中のため課金されない）
   gemini_2_5_pro_exp:
     id: gemini_2_5_pro_exp
-    name: gemini-2.5-pro-002  # 直接モデル名を指定
+    name: gemini:experimental  # エイリアス使用: gemini-2.5-pro-002
     provider: google
     tier: 0
     cost_per_1k_tokens:
@@ -88,8 +88,8 @@ models:
     provider: google
     tier: 1
     cost_per_1k_tokens:
-      input: 0.075  # $0.075/1K入力トークン
-      output: 0.30  # $0.30/1K出力トークン
+      input: 0.00  # $0.075/1K入力トークン
+      output: 0.00  # $0.30/1K出力トークン
     latency_ms: 400
     max_tokens: 8192
     capabilities:

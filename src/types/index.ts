@@ -117,14 +117,17 @@ export interface UserMetadata {
   endpoint?: string;
 }
 
-export type TaskType = 'coding' | 'general' | 'complex_analysis' | 'premium' | 'auto' |
+export type TaskType = 'coding' | 'general' | 'complex_analysis' | 'premium' | 'auto' | 'critical' |
                      'rag_search' | 'document_query' | 'semantic_search' | 'vector_upsert' | 'vector_delete' |
-                     'file_search' | 'code_interpreter' | 'general_assistant';
+                     'file_search' | 'code_interpreter' | 'general_assistant' | 'code_execution' |
+                     'assistant_file_search' | 'assistant_code_interpreter' | 'assistant_chat';
 
 export interface ConversationContext {
   previous_responses?: LLMResponse[];
   conversation_id?: string;
   turn_count?: number;
+  context_summary?: string;
+  current_complexity?: number;
 }
 
 export interface LLMResponse {

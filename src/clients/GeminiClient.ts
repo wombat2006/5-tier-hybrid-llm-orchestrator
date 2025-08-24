@@ -27,7 +27,7 @@ export class GeminiAPIClient implements BaseLLMClient {
     this.modelName = modelName;
     
     // Gemini 2.5 Pro Expをサポート
-    if (modelName === 'gemini-2.5-pro-exp' || modelName === 'gemini-2.5-pro-002') {
+    if (modelName === 'gemini-2.5-pro-exp' || modelName === 'gemini-2.5-pro-002' || modelName.includes('gemini-2.5-pro')) {
       this.modelName = 'gemini-2.5-pro-002';
     }
     
@@ -125,9 +125,25 @@ export class GeminiAPIClient implements BaseLLMClient {
 
       // モデル識別とTier決定
       const isGeminiProExp = this.modelName === 'gemini-2.5-pro-002';
+      const isGemini25Flash = this.modelName === 'gemini-2.5-flash';
       const isGeminiPro = this.modelName.includes('pro') && !isGeminiProExp;
-      const modelUsed = isGeminiProExp ? 'gemini_2.5_pro_exp' : (isGeminiPro ? 'gemini_pro' : 'gemini_flash');
-      const tierUsed = isGeminiProExp ? 0 : (isGeminiPro ? 3 : 1); // Gemini 2.5 Pro Exp はTier 0
+      
+      console.log(`[GeminiClient] 🔍 DEBUG - modelName: ${this.modelName}`);
+      console.log(`[GeminiClient] 🔍 DEBUG - isGeminiProExp: ${isGeminiProExp}, isGemini25Flash: ${isGemini25Flash}, isGeminiPro: ${isGeminiPro}`);
+      
+      let modelUsed = 'gemini_flash'; // デフォルト
+      let tierUsed = 1; // デフォルトtier
+      
+      if (isGeminiProExp) {
+        modelUsed = 'gemini_2_5_pro_exp';
+        tierUsed = 0;
+      } else if (isGemini25Flash) {
+        modelUsed = 'gemini_2_5_flash';
+        tierUsed = 1;
+      } else if (isGeminiPro) {
+        modelUsed = 'gemini_pro';
+        tierUsed = 3;
+      }
 
       const llmResponse: LLMResponse = {
         success: true,
@@ -174,9 +190,22 @@ export class GeminiAPIClient implements BaseLLMClient {
       };
 
       const isGeminiProExp = this.modelName === 'gemini-2.5-pro-002';
+      const isGemini25Flash = this.modelName === 'gemini-2.5-flash';
       const isGeminiPro = this.modelName.includes('pro') && !isGeminiProExp;
-      const modelUsed = isGeminiProExp ? 'gemini_2.5_pro_exp' : (isGeminiPro ? 'gemini_pro' : 'gemini_flash');
-      const tierUsed = isGeminiProExp ? 0 : (isGeminiPro ? 3 : 1);
+      
+      let modelUsed = 'gemini_flash'; // デフォルト
+      let tierUsed = 1; // デフォルトtier
+      
+      if (isGeminiProExp) {
+        modelUsed = 'gemini_2.5_pro_exp';
+        tierUsed = 0;
+      } else if (isGemini25Flash) {
+        modelUsed = 'gemini_2_5_flash';
+        tierUsed = 1;
+      } else if (isGeminiPro) {
+        modelUsed = 'gemini_pro';
+        tierUsed = 3;
+      }
 
       return {
         success: false,
