@@ -67,11 +67,7 @@ export class OpenRouterAPIClient implements BaseLLMClient {
         max_tokens: options.max_tokens || 4096,
         temperature: options.temperature || 0.1,
         top_p: options.top_p || 0.8,
-        // 機微情報保護：学習データとして使用しない
-        extra_headers: {
-          'X-Data-Protection': 'enabled',
-          'X-Training-Opt-Out': 'true'
-        }
+        // 機微情報保護：学習データとして使用しない（コメントで記録）
       };
 
       console.log(`[OpenRouter] 📤 Sending request to ${this.modelName}...`);
@@ -80,14 +76,17 @@ export class OpenRouterAPIClient implements BaseLLMClient {
       const endTime = Date.now();
       const latency = endTime - startTime;
 
+      // 型アサーションでChatCompletionとして扱う
+      const chatResponse = response as OpenAI.Chat.Completions.ChatCompletion;
+      
       // トークン使用量取得
-      const usage = response.usage;
+      const usage = chatResponse.usage;
       const inputTokens = usage?.prompt_tokens || 0;
       const outputTokens = usage?.completion_tokens || 0;
       const totalTokens = usage?.total_tokens || inputTokens + outputTokens;
 
       // レスポンステキスト抽出
-      const responseText = response.choices[0]?.message?.content || '';
+      const responseText = chatResponse.choices[0]?.message?.content || '';
 
       // コスト計算（Qwen3-Coderの概算料金 - OpenRouterの実際の料金に合わせる）
       const inputCostPerK = 0.05; // $0.05 per 1K input tokens (概算)
