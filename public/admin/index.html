@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - IT Troubleshooting System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="/css/admin.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-danger">
+        <div class="container-fluid">
+            <a class="navbar-brand admin-glow" href="#">
+                <i class="fas fa-shield-alt me-2"></i>ADMIN PANEL - IT TROUBLESHOOTING SYSTEM
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text admin-glow">
+                    <i class="fas fa-user-shield me-1"></i>ADMINISTRATOR ACCESS
+                </span>
+                <button class="btn btn-outline-light btn-sm ms-3" id="logout-btn">
+                    <i class="fas fa-sign-out-alt me-1"></i>ログアウト
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Admin サイドバー -->
+            <div class="col-md-3">
+                <div class="card admin-card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cogs me-2"></i>管理機能
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            <button class="list-group-item list-group-item-action admin-tab active" id="system-overview-tab">
+                                <i class="fas fa-tachometer-alt me-2"></i>システム概要
+                            </button>
+                            <button class="list-group-item list-group-item-action admin-tab" id="user-sessions-tab">
+                                <i class="fas fa-users me-2"></i>ユーザセッション
+                            </button>
+                            <button class="list-group-item list-group-item-action admin-tab" id="troubleshooting-logs-tab">
+                                <i class="fas fa-file-medical-alt me-2"></i>トラブルシューティングログ
+                            </button>
+                            <button class="list-group-item list-group-item-action admin-tab" id="model-performance-tab">
+                                <i class="fas fa-brain me-2"></i>モデル性能
+                            </button>
+                            <button class="list-group-item list-group-item-action admin-tab" id="security-settings-tab">
+                                <i class="fas fa-lock me-2"></i>セキュリティ設定
+                            </button>
+                            <button class="list-group-item list-group-item-action admin-tab" id="system-maintenance-tab">
+                                <i class="fas fa-wrench me-2"></i>システムメンテナンス
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- クイックアクション -->
+                <div class="card admin-card mt-3">
+                    <div class="card-header bg-danger text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-bolt me-2"></i>クイックアクション
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-danger btn-sm" id="emergency-stop-btn">
+                                <i class="fas fa-stop me-1"></i>緊急停止
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm" id="restart-services-btn">
+                                <i class="fas fa-refresh me-1"></i>サービス再起動
+                            </button>
+                            <button class="btn btn-outline-info btn-sm" id="backup-system-btn">
+                                <i class="fas fa-database me-1"></i>システムバックアップ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- メインコンテンツ -->
+            <div class="col-md-9">
+                <!-- システム概要パネル -->
+                <div id="system-overview-panel" class="admin-panel">
+                    <div class="card admin-card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-tachometer-alt me-2"></i>システム概要ダッシュボード
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="metric-card">
+                                        <div class="metric-icon bg-primary">
+                                            <i class="fas fa-server"></i>
+                                        </div>
+                                        <div class="metric-info">
+                                            <h3 id="total-requests">-</h3>
+                                            <p>総リクエスト数</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-card">
+                                        <div class="metric-icon bg-success">
+                                            <i class="fas fa-users"></i>
+                                        </div>
+                                        <div class="metric-info">
+                                            <h3 id="active-sessions">-</h3>
+                                            <p>アクティブセッション</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-card">
+                                        <div class="metric-icon bg-warning">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                        </div>
+                                        <div class="metric-info">
+                                            <h3 id="error-rate">-</h3>
+                                            <p>エラー率</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-card">
+                                        <div class="metric-icon bg-info">
+                                            <i class="fas fa-clock"></i>
+                                        </div>
+                                        <div class="metric-info">
+                                            <h3 id="avg-response-time">-</h3>
+                                            <p>平均応答時間</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-4">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">リアルタイム監視</div>
+                                        <div class="card-body" id="realtime-monitor">
+                                            <div class="monitor-line">
+                                                <span class="status-dot status-healthy"></span>
+                                                <strong>API Server:</strong> <span class="status-text">正常稼働中</span>
+                                            </div>
+                                            <div class="monitor-line">
+                                                <span class="status-dot status-healthy"></span>
+                                                <strong>Database:</strong> <span class="status-text">接続正常</span>
+                                            </div>
+                                            <div class="monitor-line">
+                                                <span class="status-dot status-healthy"></span>
+                                                <strong>LLM Services:</strong> <span class="status-text">全サービス稼働中</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">システムリソース</div>
+                                        <div class="card-body" id="system-resources">
+                                            <div class="resource-item">
+                                                <label>CPU使用率</label>
+                                                <div class="progress">
+                                                    <div class="progress-bar bg-success" id="cpu-usage" style="width: 0%"></div>
+                                                </div>
+                                            </div>
+                                            <div class="resource-item">
+                                                <label>メモリ使用率</label>
+                                                <div class="progress">
+                                                    <div class="progress-bar bg-info" id="memory-usage" style="width: 0%"></div>
+                                                </div>
+                                            </div>
+                                            <div class="resource-item">
+                                                <label>ディスク使用率</label>
+                                                <div class="progress">
+                                                    <div class="progress-bar bg-warning" id="disk-usage" style="width: 0%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ユーザセッションパネル -->
+                <div id="user-sessions-panel" class="admin-panel" style="display: none;">
+                    <div class="card admin-card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-users me-2"></i>アクティブユーザセッション管理
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-striped" id="sessions-table">
+                                    <thead>
+                                        <tr>
+                                            <th>セッションID</th>
+                                            <th>IPアドレス</th>
+                                            <th>開始時刻</th>
+                                            <th>最終アクティビティ</th>
+                                            <th>ステータス</th>
+                                            <th>アクション</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sessions-tbody">
+                                        <tr>
+                                            <td colspan="6" class="text-center">
+                                                <div class="spinner-border text-info" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- トラブルシューティングログパネル -->
+                <div id="troubleshooting-logs-panel" class="admin-panel" style="display: none;">
+                    <div class="card admin-card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">
+                                <i class="fas fa-file-medical-alt me-2"></i>トラブルシューティングログ
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <select class="form-select" id="log-filter">
+                                        <option value="all">全てのログ</option>
+                                        <option value="critical">緊急</option>
+                                        <option value="high">高</option>
+                                        <option value="medium">中</option>
+                                        <option value="low">低</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <button class="btn btn-primary" id="export-logs-btn">
+                                        <i class="fas fa-download me-1"></i>ログエクスポート
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="log-container" id="troubleshooting-log-display">
+                                <div class="text-center p-4">
+                                    <div class="spinner-border text-warning" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">ログを読み込み中...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 認証モーダル -->
+    <div class="modal fade" id="authModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark">
+                <div class="modal-header border-danger">
+                    <h5 class="modal-title text-danger">
+                        <i class="fas fa-shield-alt me-2"></i>管理者認証
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        この管理画面へのアクセスには認証が必要です
+                    </div>
+                    <form id="auth-form">
+                        <div class="mb-3">
+                            <label for="admin-password" class="form-label text-light">管理者パスワード</label>
+                            <input type="password" class="form-control bg-dark text-light" id="admin-password" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-key me-1"></i>認証
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/admin.js"></script>
+</body>
+</html>

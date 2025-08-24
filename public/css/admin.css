@@ -1,0 +1,455 @@
+/* Admin Panel Styles - Security Theme */
+
+:root {
+    --admin-primary: #dc3545;
+    --admin-secondary: #ffc107;
+    --admin-success: #28a745;
+    --admin-info: #17a2b8;
+    --admin-warning: #ffc107;
+    --admin-danger: #dc3545;
+    --admin-dark: #000000;
+    --admin-bg: #1a1a1a;
+    --admin-panel: #2d2d2d;
+    --admin-border: #495057;
+    --admin-text: #ffffff;
+    --admin-accent: #ff6b6b;
+}
+
+body {
+    background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2d2d2d 100%);
+    color: var(--admin-text);
+    font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
+    min-height: 100vh;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 20% 80%, rgba(220, 53, 69, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 193, 7, 0.1) 0%, transparent 50%),
+        linear-gradient(45deg, transparent 30%, rgba(220, 53, 69, 0.05) 50%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* ナビゲーションバー */
+.navbar {
+    background: linear-gradient(90deg, var(--admin-dark) 0%, var(--admin-danger) 100%) !important;
+    border-bottom: 3px solid var(--admin-danger);
+    box-shadow: 0 3px 15px rgba(220, 53, 69, 0.4);
+}
+
+.navbar-brand {
+    color: var(--admin-text) !important;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.admin-glow {
+    animation: adminGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes adminGlow {
+    from { 
+        text-shadow: 0 0 5px rgba(220, 53, 69, 0.5);
+        box-shadow: 0 0 10px rgba(220, 53, 69, 0.2);
+    }
+    to { 
+        text-shadow: 0 0 15px rgba(220, 53, 69, 0.8);
+        box-shadow: 0 0 20px rgba(220, 53, 69, 0.4);
+    }
+}
+
+/* Admin カード */
+.admin-card {
+    background: linear-gradient(135deg, var(--admin-panel) 0%, var(--admin-bg) 100%);
+    border: 2px solid var(--admin-border);
+    box-shadow: 
+        0 6px 20px rgba(0, 0, 0, 0.4),
+        0 0 15px rgba(220, 53, 69, 0.1);
+    color: var(--admin-text);
+}
+
+.admin-card .card-header {
+    border-bottom: 2px solid var(--admin-border);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Admin タブ */
+.admin-tab {
+    background-color: var(--admin-panel);
+    border: 1px solid var(--admin-border);
+    color: var(--admin-text);
+    transition: all 0.3s ease;
+}
+
+.admin-tab:hover {
+    background: linear-gradient(90deg, var(--admin-border) 0%, var(--admin-panel) 100%);
+    border-left: 4px solid var(--admin-danger);
+    color: var(--admin-danger);
+    box-shadow: inset 0 0 15px rgba(220, 53, 69, 0.2);
+}
+
+.admin-tab.active {
+    background: linear-gradient(90deg, var(--admin-danger) 0%, var(--admin-warning) 100%);
+    border-color: var(--admin-danger);
+    color: var(--admin-dark);
+    font-weight: bold;
+    box-shadow: 0 0 20px rgba(220, 53, 69, 0.5);
+}
+
+/* メトリクスカード */
+.metric-card {
+    background: linear-gradient(135deg, var(--admin-panel) 0%, var(--admin-bg) 100%);
+    border: 2px solid var(--admin-border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+}
+
+.metric-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.metric-info h3 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--admin-danger);
+}
+
+.metric-info p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--admin-text);
+    opacity: 0.8;
+}
+
+/* リアルタイム監視 */
+.monitor-line {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--admin-border);
+}
+
+.status-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 1rem;
+    animation: pulse 2s infinite;
+}
+
+.status-healthy {
+    background-color: var(--admin-success);
+}
+
+.status-warning {
+    background-color: var(--admin-warning);
+}
+
+.status-error {
+    background-color: var(--admin-danger);
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.status-text {
+    color: var(--admin-text);
+    font-weight: 500;
+}
+
+/* リソース監視 */
+.resource-item {
+    margin-bottom: 1rem;
+}
+
+.resource-item label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--admin-text);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.progress {
+    height: 8px;
+    background: linear-gradient(90deg, var(--admin-bg) 0%, var(--admin-panel) 100%);
+    border: 1px solid var(--admin-border);
+    border-radius: 5px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.progress-bar {
+    border-radius: 5px;
+    transition: width 0.6s ease;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+/* テーブル */
+.table-dark {
+    background: linear-gradient(135deg, var(--admin-panel) 0%, var(--admin-bg) 100%);
+    border: 2px solid var(--admin-border);
+}
+
+.table-dark th {
+    background: linear-gradient(90deg, var(--admin-danger) 0%, var(--admin-warning) 100%);
+    color: var(--admin-dark);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 2px solid var(--admin-danger);
+}
+
+.table-dark td {
+    border-bottom: 1px solid var(--admin-border);
+    color: var(--admin-text);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > td {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+/* ログコンテナ */
+.log-container {
+    background: linear-gradient(135deg, var(--admin-dark) 0%, var(--admin-panel) 100%);
+    border: 2px solid var(--admin-danger);
+    border-radius: 8px;
+    padding: 1rem;
+    height: 400px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    color: var(--admin-text);
+    box-shadow: 
+        inset 0 3px 8px rgba(0, 0, 0, 0.5),
+        0 0 15px rgba(220, 53, 69, 0.2);
+}
+
+.log-entry {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    border-left: 4px solid var(--admin-info);
+}
+
+.log-entry.critical {
+    border-left-color: var(--admin-danger);
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.log-entry.high {
+    border-left-color: var(--admin-warning);
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.log-entry.medium {
+    border-left-color: var(--admin-info);
+    background-color: rgba(23, 162, 184, 0.1);
+}
+
+.log-entry.low {
+    border-left-color: var(--admin-success);
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+/* ボタン */
+.btn {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn-outline-danger {
+    border: 2px solid var(--admin-danger);
+    color: var(--admin-danger);
+    background: transparent;
+}
+
+.btn-outline-danger:hover {
+    background: var(--admin-danger);
+    color: var(--admin-text);
+    box-shadow: 0 0 20px rgba(220, 53, 69, 0.5);
+}
+
+.btn-outline-warning {
+    border: 2px solid var(--admin-warning);
+    color: var(--admin-warning);
+    background: transparent;
+}
+
+.btn-outline-warning:hover {
+    background: var(--admin-warning);
+    color: var(--admin-dark);
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+}
+
+.btn-outline-info {
+    border: 2px solid var(--admin-info);
+    color: var(--admin-info);
+    background: transparent;
+}
+
+.btn-outline-info:hover {
+    background: var(--admin-info);
+    color: var(--admin-text);
+    box-shadow: 0 0 20px rgba(23, 162, 184, 0.5);
+}
+
+.btn-outline-light {
+    border: 1px solid var(--admin-text);
+    color: var(--admin-text);
+}
+
+.btn-outline-light:hover {
+    background: var(--admin-text);
+    color: var(--admin-dark);
+}
+
+/* フォーム要素 */
+.form-control {
+    background: linear-gradient(135deg, var(--admin-bg) 0%, var(--admin-panel) 100%);
+    border: 2px solid var(--admin-border);
+    color: var(--admin-text);
+    font-family: 'Courier New', monospace;
+}
+
+.form-control:focus {
+    background: linear-gradient(135deg, var(--admin-panel) 0%, var(--admin-bg) 100%);
+    border-color: var(--admin-danger);
+    color: var(--admin-text);
+    box-shadow: 
+        0 0 20px rgba(220, 53, 69, 0.4),
+        inset 0 0 10px rgba(220, 53, 69, 0.1);
+}
+
+.form-select {
+    background: linear-gradient(135deg, var(--admin-bg) 0%, var(--admin-panel) 100%);
+    border: 2px solid var(--admin-border);
+    color: var(--admin-text);
+    font-family: 'Courier New', monospace;
+}
+
+.form-label {
+    color: var(--admin-text);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.875rem;
+}
+
+/* モーダル */
+.modal-content {
+    border: 3px solid var(--admin-danger);
+    box-shadow: 0 10px 40px rgba(220, 53, 69, 0.3);
+}
+
+.modal-header {
+    background: linear-gradient(90deg, var(--admin-dark) 0%, var(--admin-panel) 100%);
+}
+
+.border-danger {
+    border-bottom: 2px solid var(--admin-danger) !important;
+}
+
+/* アラート */
+.alert {
+    border: 2px solid;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, var(--admin-panel) 100%);
+    border-color: var(--admin-warning);
+    color: var(--admin-warning);
+}
+
+/* アニメーション強化 */
+.admin-panel {
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* スクロールバー */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--admin-bg);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--admin-danger) 0%, var(--admin-warning) 100%);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, var(--admin-warning) 0%, var(--admin-accent) 100%);
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .metric-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .metric-icon {
+        margin-right: 0;
+        margin-bottom: 1rem;
+    }
+    
+    .navbar-brand {
+        font-size: 0.9rem;
+    }
+}

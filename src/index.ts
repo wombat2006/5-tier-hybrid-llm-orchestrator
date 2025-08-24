@@ -1,5 +1,9 @@
 import dotenv from 'dotenv';
 import express from 'express';
+import https from 'https';
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
 import compression from 'compression';
 import { LLMOrchestrator } from './orchestrator/LLMOrchestrator';
 import LogAnalysisService, { LogAnalysisRequest } from './services/LogAnalysisService';
@@ -12,8 +16,27 @@ import { LLMRequest } from './types';
 // 環境変数読み込み
 dotenv.config();
 
+// SSL証明書の設定（本番環境用）
+let sslOptions: any = null;
+let userPort = 4000;     // 開発時のフォールバック
+let adminPort = 4001;    // 開発時のフォールバック
+
+try {
+  sslOptions = {
+    key: fs.readFileSync('/etc/ssl/advsec/www.advsec.co.jp.key'),
+    cert: fs.readFileSync('/etc/ssl/advsec/fullchain.crt')
+  };
+  userPort = 443;    // 一般ユーザ向けSSL
+  adminPort = 80;    // 管理者向けSSL (非標準だが要求仕様)
+  console.log('✅ SSL証明書を読み込みました - 本番モード');
+} catch (error) {
+  console.log('⚠️  SSL証明書が読み込めません - 開発モード（HTTP）で起動します');
+  console.log('   本番環境では適切な権限設定が必要です');
+}
+
+// アプリケーション作成
 const app = express();
-const port = process.env.PORT || 4000;
+const adminApp = express();
 
 // パフォーマンス最適化ミドルウェア設定
 app.use(compression()); // gzip圧縮でレスポンスサイズ削減
@@ -1293,50 +1316,144 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
   });
 });
 
-// サーバー起動
-app.listen(port, () => {
-  console.log('\n🌟 =====================================');
-  console.log('🚀 5-Tier Hybrid LLM System Server');
-  console.log('🌟 =====================================');
-  console.log(`📡 Server running on port ${port}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log('\n📋 Core endpoints:');
-  console.log(`   GET    http://localhost:${port}/health`);
-  console.log(`   GET    http://localhost:${port}/info`);
-  console.log(`   GET    http://localhost:${port}/metrics`);
-  console.log(`   POST   http://localhost:${port}/generate`);
-  console.log(`   POST   http://localhost:${port}/code`);
-  console.log(`   POST   http://localhost:${port}/rag/search`);
-  console.log('');
-  console.log('🔧 IT Troubleshooting endpoints:');
-  console.log(`   POST   http://localhost:${port}/analyze-logs`);
-  console.log(`   POST   http://localhost:${port}/troubleshoot/start`);
-  console.log(`   POST   http://localhost:${port}/troubleshoot/answer`);
-  console.log(`   POST   http://localhost:${port}/troubleshoot/diagnose`);
-  console.log(`   POST   http://localhost:${port}/troubleshoot/resolve`);
-  console.log(`   GET    http://localhost:${port}/troubleshoot/session/:sessionId`);
-  console.log(`   GET    http://localhost:${port}/troubleshoot/sessions`);
-  console.log(`   POST   http://localhost:${port}/troubleshoot/analyze-advanced`);
-  console.log('');
-  console.log('🤖 OpenAI Assistant API endpoints:');
-  console.log(`   POST   http://localhost:${port}/assistant/file-search`);
-  console.log(`   POST   http://localhost:${port}/assistant/code-interpreter`);
-  console.log(`   POST   http://localhost:${port}/assistant/chat`);
-  console.log(`   POST   http://localhost:${port}/reset-metrics`);
-  console.log('');
-  console.log('🤖 AI Interface endpoints:');
-  console.log(`   GET    http://localhost:${port}/ai/stats`);
-  console.log(`   POST   http://localhost:${port}/ai/claude`);
-  console.log(`   POST   http://localhost:${port}/ai/gemini`);
-  console.log(`   POST   http://localhost:${port}/ai/auto`);
-  console.log('');
-  console.log('🔍 Analysis Tool endpoints:');
-  console.log(`   GET    http://localhost:${port}/tools/stats`);
-  console.log(`   POST   http://localhost:${port}/tools/context7`);
-  console.log('\n🆕 NEW: Vector Storage & RAG capabilities added!');
-  console.log('\n💡 Tier Priority: 0 (Qwen3 Coder) → 1 (Gemini Flash) → 2 (Claude) → 3 (Premium)');
-  console.log('🌟 =====================================\n');
+// 管理者認証ミドルウェア
+const adminAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
+  // 基本的な認証チェック（実際の実装ではより堅牢な認証が必要）
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  
+  // 簡単なトークン検証（本来はより堅牢な検証が必要）
+  const token = authHeader.substring(7);
+  if (token !== 'admin_authenticated') {
+    res.status(401).json({ error: 'Invalid token' });
+    return;
+  }
+  
+  next();
+};
+
+// 管理者認証エンドポイント
+adminApp.post('/admin/auth', (req, res) => {
+  const { password } = req.body;
+  
+  // 簡単なパスワード認証（実際の実装ではハッシュ化されたパスワードを使用）
+  if (password === process.env.ADMIN_PASSWORD || password === 'advsec_admin_2025') {
+    res.json({ token: 'admin_authenticated', expires_in: 3600 });
+  } else {
+    res.status(401).json({ error: 'Invalid password' });
+  }
 });
+
+// 管理者専用エンドポイント
+adminApp.get('/admin/sessions', adminAuthMiddleware, (req, res) => {
+  // デモ用のセッションデータ
+  const sessions = [
+    {
+      id: 'sess_001',
+      ip_address: '192.168.1.100',
+      created_at: new Date(Date.now() - 3600000).toISOString(),
+      last_activity: new Date(Date.now() - 300000).toISOString(),
+      status: 'active'
+    },
+    {
+      id: 'sess_002', 
+      ip_address: '203.104.209.102',
+      created_at: new Date(Date.now() - 7200000).toISOString(),
+      last_activity: new Date(Date.now() - 600000).toISOString(),
+      status: 'inactive'
+    }
+  ];
+  res.json(sessions);
+});
+
+adminApp.get('/admin/troubleshooting-logs', adminAuthMiddleware, (req, res) => {
+  // デモ用のログデータ
+  const logs = [
+    {
+      timestamp: new Date().toISOString(),
+      severity: 'critical',
+      session_id: 'sess_001',
+      problem_description: 'PostgreSQL connection failed',
+      resolution_status: 'resolved',
+      actions_taken: ['Restart PostgreSQL service', 'Update connection pool']
+    },
+    {
+      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      severity: 'high',
+      session_id: 'sess_002',
+      problem_description: 'High memory usage detected',
+      resolution_status: 'investigating',
+      actions_taken: ['Memory analysis', 'Process monitoring']
+    }
+  ];
+  res.json(logs);
+});
+
+// サーバー起動
+let userServer: any;
+let adminServer: any;
+
+if (sslOptions) {
+  // HTTPS（本番モード）
+  userServer = https.createServer(sslOptions, app);
+  adminServer = https.createServer(sslOptions, adminApp);
+  
+  userServer.listen(userPort, '0.0.0.0', () => {
+    console.log('\n🌟 =====================================');
+    console.log('🚀 一般ユーザ向けサービス (HTTPS)');
+    console.log('🌟 =====================================');
+    console.log(`📡 Server: https://www.advsec.co.jp:${userPort}`);
+    console.log(`🔍 Health: https://www.advsec.co.jp:${userPort}/health`);
+    console.log(`📊 Metrics: https://www.advsec.co.jp:${userPort}/metrics`);
+    console.log('\n🎯 利用可能なエンドポイント:');
+    console.log(`   POST /generate - LLM生成リクエスト`);
+    console.log(`   POST /analyze-logs - ログ解析`);
+    console.log(`   POST /troubleshoot/* - トラブルシューティング関連`);
+  });
+
+  adminServer.listen(adminPort, '0.0.0.0', () => {
+    console.log('\n🛡️ =====================================');
+    console.log('🔐 管理者向けサービス (HTTPS)');
+    console.log('🛡️ =====================================');
+    console.log(`📡 Admin Server: https://www.advsec.co.jp:${adminPort}/admin`);
+    console.log(`🔐 認証が必要です - パスワード: advsec_admin_2025`);
+    console.log('\n🎯 管理機能:');
+    console.log(`   システム監視・ユーザセッション管理・ログ解析`);
+    console.log('\n✨ 両サービスが完全に初期化されました!');
+  });
+} else {
+  // HTTP（開発モード）
+  userServer = http.createServer(app);
+  adminServer = http.createServer(adminApp);
+  
+  userServer.listen(userPort, '0.0.0.0', () => {
+    console.log('\n🌟 =====================================');
+    console.log('🚀 一般ユーザ向けサービス (HTTP - 開発モード)');
+    console.log('🌟 =====================================');
+    console.log(`📡 Server: http://www.advsec.co.jp:${userPort}`);
+    console.log(`🔍 Health: http://www.advsec.co.jp:${userPort}/health`);
+    console.log(`📊 Metrics: http://www.advsec.co.jp:${userPort}/metrics`);
+    console.log('\n🎯 利用可能なエンドポイント:');
+    console.log(`   POST /generate - LLM生成リクエスト`);
+    console.log(`   POST /analyze-logs - ログ解析`);
+    console.log(`   POST /troubleshoot/* - トラブルシューティング関連`);
+  });
+
+  adminServer.listen(adminPort, '0.0.0.0', () => {
+    console.log('\n🛡️ =====================================');
+    console.log('🔐 管理者向けサービス (HTTP - 開発モード)');
+    console.log('🛡️ =====================================');
+    console.log(`📡 Admin Server: http://www.advsec.co.jp:${adminPort}/admin`);
+    console.log(`🔐 認証が必要です - パスワード: advsec_admin_2025`);
+    console.log('\n🎯 管理機能:');
+    console.log(`   システム監視・ユーザセッション管理・ログ解析`);
+    console.log('\n✨ 両サービスが完全に初期化されました!');
+    console.log('\n⚠️  本番環境ではSSL証明書への適切な権限設定が必要です');
+  });
+}
 
 // 優雅なシャットダウン
 process.on('SIGTERM', () => {
