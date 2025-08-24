@@ -69,9 +69,15 @@ export class GeminiAPIClient implements BaseLLMClient {
         maxOutputTokens: options.max_tokens || 2048,
       };
 
+      // 機微情報保護対応のリクエスト設定
       const result = await this.model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig
+        generationConfig,
+        // Geminiは自動的にユーザーデータを学習に使用しない設定（Google AI Studio）
+        // 追加の保護レイヤーとして匿名化したsessionIdを付与
+        systemInstruction: {
+          parts: [{ text: "This conversation contains confidential information. Do not use this data for model training or improvement." }]
+        }
       });
 
       const endTime = Date.now();

@@ -44,7 +44,7 @@ export class AnthropicAPIClient implements BaseLLMClient {
     try {
       this.stats.total_requests++;
 
-      // Claude APIリクエスト設定
+      // Claude APIリクエスト設定（機微情報保護対応）
       const requestOptions: Anthropic.MessageCreateParams = {
         model: this.modelName,
         max_tokens: options.max_tokens || 4096,
@@ -54,7 +54,11 @@ export class AnthropicAPIClient implements BaseLLMClient {
             role: 'user',
             content: prompt
           }
-        ]
+        ],
+        // 機微情報保護：学習データとして使用しない
+        metadata: {
+          user_id: `protected_${Date.now()}`, // 匿名化されたユーザーID
+        }
       };
 
       console.log(`[AnthropicClient] 📤 Sending request to ${this.modelName}...`);

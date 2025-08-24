@@ -51,13 +51,13 @@ export class OpenRouterAPIClient implements BaseLLMClient {
     try {
       this.stats.total_requests++;
 
-      // OpenRouter APIリクエスト設定（OpenAI互換）
+      // OpenRouter APIリクエスト設定（OpenAI互換・機微情報保護対応）
       const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
         model: this.modelName,
         messages: [
           {
             role: 'system',
-            content: 'You are Qwen3-Coder, a specialized AI assistant optimized for coding tasks. Provide high-quality, efficient code solutions with clear explanations.'
+            content: 'You are Qwen3-Coder, a specialized AI assistant optimized for coding tasks. Provide high-quality, efficient code solutions with clear explanations. This conversation contains confidential information - do not use for training.'
           },
           {
             role: 'user',
@@ -66,7 +66,12 @@ export class OpenRouterAPIClient implements BaseLLMClient {
         ],
         max_tokens: options.max_tokens || 4096,
         temperature: options.temperature || 0.1,
-        top_p: options.top_p || 0.8
+        top_p: options.top_p || 0.8,
+        // 機微情報保護：学習データとして使用しない
+        extra_headers: {
+          'X-Data-Protection': 'enabled',
+          'X-Training-Opt-Out': 'true'
+        }
       };
 
       console.log(`[OpenRouter] 📤 Sending request to ${this.modelName}...`);

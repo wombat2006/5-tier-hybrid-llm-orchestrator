@@ -44,7 +44,7 @@ export class OpenAIAPIClient implements BaseLLMClient {
     try {
       this.stats.total_requests++;
 
-      // OpenAI APIリクエスト設定
+      // OpenAI APIリクエスト設定（機微情報保護対応）
       const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
         model: this.modelName,
         messages: [
@@ -56,6 +56,8 @@ export class OpenAIAPIClient implements BaseLLMClient {
         max_tokens: options.max_tokens || 4096,
         temperature: options.temperature || 0.7,
         top_p: options.top_p || 1,
+        // 機微情報保護：自己学習防止設定
+        store: false,  // 会話履歴をOpenAIに保存せず、学習データとしても使用しない
       };
 
       console.log(`[OpenAIClient] 📤 Sending request to ${this.modelName}...`);

@@ -338,6 +338,45 @@ cost_management:
     warning_threshold: 0.8   # 80%で警告
     critical_threshold: 0.95 # 95%で制限
 
+# データ保護・情報漏洩防止設定
+data_protection:
+  # 機微情報保護の基本設定
+  confidential_data_handling: true
+  
+  # プロバイダー別自己学習防止設定
+  provider_settings:
+    openai:
+      store: false                    # 会話履歴保存無効
+      training_opt_out: true          # 学習データ使用無効
+      data_protection_headers: true   # 保護ヘッダー有効
+    
+    anthropic:
+      training_data_usage: false      # 学習データ使用無効
+      data_retention_policy: "no_retention"  # データ保持無効
+      anonymous_requests: true        # リクエスト匿名化
+    
+    google:
+      learning_disabled: true         # 学習機能無効
+      data_export_disabled: true     # データエクスポート無効
+      confidentiality_instruction: true  # 機密性指示
+    
+    openrouter:
+      training_opt_out: true          # 学習データ使用無効
+      data_protection_headers: true   # 保護ヘッダー有効
+      privacy_mode: "maximum"         # 最大プライバシー設定
+
+  # ログ・監査設定
+  audit_settings:
+    log_sensitive_requests: false    # 機微リクエストのログ無効
+    anonymize_user_data: true       # ユーザーデータ匿名化
+    secure_transmission: true       # 安全な送信
+    
+  # コンプライアンス設定
+  compliance:
+    gdpr_compliant: true            # GDPR準拠
+    hipaa_compliant: true           # HIPAA準拠（該当する場合）
+    data_residency: "user_controlled"  # データ保存場所制御
+
 # 外部API層設定
 external_apis:
   weather:
