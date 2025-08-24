@@ -97,6 +97,25 @@ export interface BudgetConfig {
   max_request_cost_usd?: number; // 単一リクエストの最大コスト
   max_session_cost_usd?: number; // セッション単位の最大コスト
   
+  // 高コストモデル制限（GPT-5等）
+  premium_model_restrictions?: {
+    max_daily_requests?: number; // 1日あたりの最大リクエスト数
+    max_hourly_requests?: number; // 1時間あたりの最大リクエスト数
+    max_request_cost_usd?: number; // 高コストモデル用の単一リクエスト制限
+    daily_budget_allocation?: number; // 高コストモデル用の日次予算配分（全体の%）
+    monthly_budget_allocation?: number; // 高コストモデル用の月次予算配分（全体の%）
+    cooldown_minutes?: number; // リクエスト間のクールダウン時間
+    restricted_models?: string[]; // 制限対象のモデルID一覧
+    approval_required?: boolean; // 手動承認が必要かどうか
+    business_hours_only?: boolean; // 営業時間内のみ使用可能
+    business_hours?: {
+      start: string; // "09:00"
+      end: string; // "18:00"
+      timezone: string; // "Asia/Tokyo"
+      weekdays_only: boolean;
+    };
+  };
+  
   // 通知設定
   notification_webhook?: string;
   notification_email?: string;

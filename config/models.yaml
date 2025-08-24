@@ -6,17 +6,17 @@ models:
   # 従来モデル定義（後方互換性のため残存）
   # OpenRouter Registry導入により、これらは補完的に使用されます
   
-  # Tier 0: レガシーQwen3 Coder設定（非推奨：OpenRouter設定を優先）
-  legacy_qwen3_coder:
-    id: legacy_qwen3_coder
-    name: qwen/qwen3-coder:free
+  # Tier 0: 無料コーディング特化モデル（最高優先度）
+  qwen3_coder_free:
+    id: qwen3_coder_free
+    name: qwen/qwen3-coder:free  # OpenRouter無料枠
     provider: openrouter
     tier: 0
     cost_per_1k_tokens:
-      input: 1.80   # per 1M tokens -> per 1K tokens
-      output: 1.80  # per 1M tokens -> per 1K tokens
+      input: 0.00   # 完全無料
+      output: 0.00  # 完全無料
     latency_ms: 300
-    max_tokens: 4096  # 制限
+    max_tokens: 4096
     capabilities:
       - coding
       - debugging
@@ -43,6 +43,9 @@ models:
       - "implement"
       - "script"
       - "debug"
+    rate_limits:
+      requests_per_minute: 20
+      daily_limit: 200
     api_client: OpenRouterAPIClient
 
   # Tier 0: Gemini 2.5 Pro Exp - 最高性能・実験版・無料（実装実験中のため課金されない）
@@ -78,7 +81,41 @@ models:
       - "reasoning"
     api_client: GeminiAPIClient
 
-  # Tier 1: Gemini Flash - 一般調査・検証・無料枠
+  # Tier 1: 低コスト汎用・有料コーディングモデル
+  qwen3_coder:
+    id: qwen3_coder
+    name: qwen/qwen3-coder  # OpenRouter有料版（高性能）
+    provider: openrouter
+    tier: 1
+    cost_per_1k_tokens:
+      input: 0.18   # $0.18/1K（1.8/10に修正）
+      output: 0.18  # $0.18/1K（1.8/10に修正）
+    latency_ms: 250
+    max_tokens: 32768  # 有料版は大容量対応
+    capabilities:
+      - coding
+      - debugging
+      - code_review
+      - refactoring
+      - complex_coding
+    languages:
+      - python
+      - javascript
+      - typescript
+      - java
+      - cpp
+      - rust
+      - go
+      - sql
+    priority_keywords:
+      - "複雑なコード"
+      - "大規模実装"
+      - "アーキテクチャ実装"
+      - "complex code"
+      - "large implementation"
+      - "advanced coding"
+    api_client: OpenRouterAPIClient
+
   gemini_flash:
     id: gemini_flash
     name: gemini:flash  # エイリアス使用: gemini-1.5-flash-002
@@ -190,6 +227,80 @@ models:
       - "image"
     api_client: GeminiAPIClient
 
+  # Tier 4: GPT-5 - 最高級推論・戦略判断・制限付き使用 (高コスト)
+  gpt5:
+    id: gpt5
+    name: gpt-5  # OpenAI 直接API
+    provider: openai
+    tier: 4  # 新設：最高級Tier
+    cost_per_1k_tokens:
+      input: 30.00   # $30.00/1K入力トークン（推定高コスト）
+      output: 60.00  # $60.00/1K出力トークン（推定高コスト）
+    latency_ms: 3000  # 推理モデルのため高レイテンシ
+    max_tokens: 16384  # 大容量出力対応
+    capabilities:
+      - ultimate_reasoning      # 最高レベル推論
+      - strategic_architecture  # 戦略的アーキテクチャ設計
+      - critical_analysis       # 重要判断支援
+      - complex_problem_solving # 複雑問題解決
+      - enterprise_planning     # 企業レベル計画立案
+      - risk_assessment         # リスク評価
+      - innovation_strategy     # イノベーション戦略
+    priority_keywords:
+      - "戦略計画"
+      - "重要判断" 
+      - "リスク評価"
+      - "最重要"
+      - "enterprise"
+      - "strategic plan"
+      - "critical decision"
+      - "risk assessment"
+      - "mission critical"
+      - "ultimate"
+      - "comprehensive"
+    usage_restrictions:
+      max_daily_requests: 5      # 1日最大5回
+      max_hourly_requests: 2     # 1時間最大2回
+      cooldown_minutes: 30       # 30分クールダウン
+      approval_required: true    # 手動承認必須
+      business_hours_only: true  # 営業時間のみ
+      max_request_cost_usd: 50.00  # 単一リクエスト最大$50
+    api_client: OpenAIAPIClient
+
+  # Tier 4: GPT-5 Mini - GPT-5の軽量版・やや制限緩和 (中高コスト)
+  gpt5_mini:
+    id: gpt5_mini
+    name: gpt-5-mini  # OpenAI 直接API
+    provider: openai
+    tier: 4
+    cost_per_1k_tokens:
+      input: 15.00   # $15.00/1K入力トークン（GPT-5の半額）
+      output: 30.00  # $30.00/1K出力トークン（GPT-5の半額）
+    latency_ms: 2000  # GPT-5より高速
+    max_tokens: 8192   # やや制限
+    capabilities:
+      - advanced_reasoning      # 高度推論
+      - strategic_analysis      # 戦略分析
+      - complex_problem_solving # 複雑問題解決
+      - architectural_guidance  # アーキテクチャ指導
+      - optimization_strategy   # 最適化戦略
+    priority_keywords:
+      - "戦略分析"
+      - "最適化"
+      - "高度分析"
+      - "strategic analysis"
+      - "optimization"
+      - "advanced analysis"
+      - "guidance"
+    usage_restrictions:
+      max_daily_requests: 10     # 1日最大10回
+      max_hourly_requests: 3     # 1時間最大3回
+      cooldown_minutes: 15       # 15分クールダウン
+      approval_required: false   # 自動承認
+      business_hours_only: false # 24時間利用可能
+      max_request_cost_usd: 25.00  # 単一リクエスト最大$25
+    api_client: OpenAIAPIClient
+
 # ルーティング設定
 routing:
   default_tier: 1  # デフォルトはTier1から開始
@@ -214,6 +325,9 @@ routing:
     premium:
       keywords: ["critical", "重要", "strategic", "戦略的", "premium", "最高品質"]
       preferred_tier: 3
+    ultimate:
+      keywords: ["戦略計画", "重要判断", "リスク評価", "最重要", "enterprise", "strategic plan", "critical decision", "risk assessment", "mission critical", "ultimate", "comprehensive"]
+      preferred_tier: 4
 
 # 協調メカニズム設定
 collaboration:
@@ -229,10 +343,30 @@ collaboration:
 # コスト管理
 cost_management:
   monthly_budget_usd: 70.0   # 月間予算
-  tier0_allocation: 0.15     # 15% - Qwen3 Coder
-  tier1_allocation: 0.50     # 50% - Gemini Flash (無料)
-  tier2_allocation: 0.25     # 25% - Claude Sonnet
-  tier3_allocation: 0.10     # 10% - Premium models
+  tier0_allocation: 0.05     # 5% - 無料枠（制限あり）
+  tier1_allocation: 0.45     # 45% - 低コストモデル（Qwen3 Coder有料版、Gemini Flash）
+  tier2_allocation: 0.35     # 35% - Claude Sonnet 4
+  tier3_allocation: 0.10     # 10% - Premium models（GPT-4o、Gemini Pro）
+  tier4_allocation: 0.05     # 5% - Ultimate models（GPT-5）※厳格制限
+  
+  # GPT-5専用高コスト制限
+  premium_model_restrictions:
+    max_daily_requests: 10     # GPT-5系：1日最大10回
+    max_hourly_requests: 3     # GPT-5系：1時間最大3回
+    max_request_cost_usd: 50.00 # 単一リクエスト最大$50
+    daily_budget_allocation: 20  # 日次予算の20%まで
+    monthly_budget_allocation: 15 # 月次予算の15%まで
+    cooldown_minutes: 15       # 15分クールダウン
+    restricted_models:         # 制限対象モデル一覧
+      - "gpt5"
+      - "gpt5_mini"
+    approval_required: false   # 自動承認（コスト制限で制御）
+    business_hours_only: false # 24時間利用可能
+    business_hours:
+      start: "09:00"
+      end: "18:00" 
+      timezone: "Asia/Tokyo"
+      weekdays_only: false
   
   cost_alerts:
     warning_threshold: 0.8   # 80%で警告

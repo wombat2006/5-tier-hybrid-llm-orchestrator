@@ -83,6 +83,14 @@ export class PrecisionCostManagementSystem implements CostManagementSystem {
       // 予算状況チェック
       const budget_status = await this.tracker.checkBudgetStatus();
       
+      // 高コストモデル制限チェック
+      const premium_check = await this.checkPremiumModelRestrictions(model_id, estimated_cost);
+      if (!premium_check.approved) {
+        approved = false;
+        reason = premium_check.reason;
+        warnings.push(...premium_check.warnings);
+      }
+
       // 単一リクエストコスト制限チェック
       if (this.config?.max_request_cost_usd && estimated_cost.total_cost_usd > this.config.max_request_cost_usd) {
         approved = false;
@@ -327,6 +335,194 @@ export class PrecisionCostManagementSystem implements CostManagementSystem {
   }
 
   // プライベートメソッド
+
+  private async checkPremiumModelRestrictions(
+    model_id: string,
+    estimated_cost: CostBreakdown
+  ): Promise<{
+    approved: boolean;
+    warnings: string[];
+    reason?: string;
+  }> {
+    const restrictions = this.config?.premium_model_restrictions;
+    if (!restrictions) {
+      return { approved: true, warnings: [] };
+    }
+
+    const warnings: string[] = [];
+    let approved = true;
+    let reason: string | undefined;
+
+    // 制限対象モデルかチェック
+    if (restrictions.restricted_models?.includes(model_id)) {
+      console.log(`[CostManagement] 🔒 Premium model restriction check for: ${model_id}`);
+
+      // 単一リクエストコスト制限
+      if (restrictions.max_request_cost_usd && estimated_cost.total_cost_usd > restrictions.max_request_cost_usd) {
+        approved = false;
+        reason = `Premium model request cost $${estimated_cost.total_cost_usd.toFixed(4)} exceeds premium limit $${restrictions.max_request_cost_usd.toFixed(4)}`;
+        return { approved, warnings, reason };
+      }
+
+      // 営業時間制限チェック
+      if (restrictions.business_hours_only && restrictions.business_hours) {
+        const now = new Date();
+        const timezone = restrictions.business_hours.timezone || 'Asia/Tokyo';
+        const localTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+        const currentHour = localTime.getHours();
+        const currentMinute = localTime.getMinutes();
+        const currentTimeMinutes = currentHour * 60 + currentMinute;
+        
+        const [startHour, startMinute] = restrictions.business_hours.start.split(':').map(Number);
+        const [endHour, endMinute] = restrictions.business_hours.end.split(':').map(Number);
+        const startMinutes = startHour * 60 + startMinute;
+        const endMinutes = endHour * 60 + endMinute;
+        
+        const isWeekend = localTime.getDay() === 0 || localTime.getDay() === 6;
+        
+        if (restrictions.business_hours.weekdays_only && isWeekend) {
+          approved = false;
+          reason = `Premium model ${model_id} is restricted to weekdays only`;
+          return { approved, warnings, reason };
+        }
+        
+        if (currentTimeMinutes < startMinutes || currentTimeMinutes > endMinutes) {
+          approved = false;
+          reason = `Premium model ${model_id} is restricted to business hours (${restrictions.business_hours.start}-${restrictions.business_hours.end} ${timezone})`;
+          return { approved, warnings, reason };
+        }
+      }
+
+      // 日次・時間次リクエスト制限チェック
+      const current_usage = await this.getPremiumModelUsage(model_id);
+      
+      if (restrictions.max_daily_requests && current_usage.daily_requests >= restrictions.max_daily_requests) {
+        approved = false;
+        reason = `Premium model ${model_id} daily request limit exceeded (${current_usage.daily_requests}/${restrictions.max_daily_requests})`;
+        return { approved, warnings, reason };
+      }
+      
+      if (restrictions.max_hourly_requests && current_usage.hourly_requests >= restrictions.max_hourly_requests) {
+        approved = false;
+        reason = `Premium model ${model_id} hourly request limit exceeded (${current_usage.hourly_requests}/${restrictions.max_hourly_requests})`;
+        return { approved, warnings, reason };
+      }
+
+      // クールダウンチェック
+      if (restrictions.cooldown_minutes && current_usage.last_request_time) {
+        const timeSinceLastRequest = Date.now() - current_usage.last_request_time.getTime();
+        const cooldownMs = restrictions.cooldown_minutes * 60 * 1000;
+        
+        if (timeSinceLastRequest < cooldownMs) {
+          const remainingMinutes = Math.ceil((cooldownMs - timeSinceLastRequest) / (60 * 1000));
+          approved = false;
+          reason = `Premium model ${model_id} cooldown active. Wait ${remainingMinutes} more minutes`;
+          return { approved, warnings, reason };
+        }
+      }
+
+      // 予算配分チェック
+      if (restrictions.daily_budget_allocation || restrictions.monthly_budget_allocation) {
+        const premium_budget_check = await this.checkPremiumModelBudget(model_id, estimated_cost);
+        if (!premium_budget_check.approved) {
+          approved = false;
+          reason = premium_budget_check.reason;
+          warnings.push(...premium_budget_check.warnings);
+          return { approved, warnings, reason };
+        }
+      }
+
+      // 手動承認必要
+      if (restrictions.approval_required) {
+        warnings.push(`Premium model ${model_id} requires manual approval`);
+      }
+
+      // 警告レベルの通知
+      if (restrictions.max_daily_requests && current_usage.daily_requests / restrictions.max_daily_requests > 0.8) {
+        warnings.push(`Premium model ${model_id} approaching daily limit (${current_usage.daily_requests}/${restrictions.max_daily_requests})`);
+      }
+    }
+
+    return { approved, warnings, reason };
+  }
+
+  private async getPremiumModelUsage(model_id: string): Promise<{
+    daily_requests: number;
+    hourly_requests: number;
+    daily_cost: number;
+    monthly_cost: number;
+    last_request_time?: Date;
+  }> {
+    // 実際の実装では、データベースやキャッシュから取得
+    // ここでは簡単な実装例
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentHour = now.getHours();
+    
+    // モック実装 - 実際の実装では永続化されたデータを使用
+    return {
+      daily_requests: 2, // 今日の使用回数
+      hourly_requests: 1, // 今時間の使用回数
+      daily_cost: 5.50, // 今日のコスト
+      monthly_cost: 48.20, // 今月のコスト
+      last_request_time: new Date(Date.now() - 15 * 60 * 1000) // 15分前
+    };
+  }
+
+  private async checkPremiumModelBudget(
+    model_id: string,
+    estimated_cost: CostBreakdown
+  ): Promise<{
+    approved: boolean;
+    warnings: string[];
+    reason?: string;
+  }> {
+    const restrictions = this.config?.premium_model_restrictions;
+    if (!restrictions) {
+      return { approved: true, warnings: [] };
+    }
+
+    const warnings: string[] = [];
+    let approved = true;
+    let reason: string | undefined;
+
+    const current_usage = await this.getPremiumModelUsage(model_id);
+    const total_budget = this.config?.monthly_budget_usd || 0;
+
+    // 日次予算配分チェック
+    if (restrictions.daily_budget_allocation) {
+      const daily_budget_limit = (total_budget / 30) * (restrictions.daily_budget_allocation / 100);
+      const projected_daily_cost = current_usage.daily_cost + estimated_cost.total_cost_usd;
+      
+      if (projected_daily_cost > daily_budget_limit) {
+        approved = false;
+        reason = `Premium model ${model_id} would exceed daily budget allocation: $${projected_daily_cost.toFixed(2)} > $${daily_budget_limit.toFixed(2)} (${restrictions.daily_budget_allocation}% of daily budget)`;
+        return { approved, warnings, reason };
+      }
+      
+      if (projected_daily_cost / daily_budget_limit > 0.8) {
+        warnings.push(`Premium model ${model_id} approaching daily budget limit`);
+      }
+    }
+
+    // 月次予算配分チェック
+    if (restrictions.monthly_budget_allocation) {
+      const monthly_budget_limit = total_budget * (restrictions.monthly_budget_allocation / 100);
+      const projected_monthly_cost = current_usage.monthly_cost + estimated_cost.total_cost_usd;
+      
+      if (projected_monthly_cost > monthly_budget_limit) {
+        approved = false;
+        reason = `Premium model ${model_id} would exceed monthly budget allocation: $${projected_monthly_cost.toFixed(2)} > $${monthly_budget_limit.toFixed(2)} (${restrictions.monthly_budget_allocation}% of monthly budget)`;
+        return { approved, warnings, reason };
+      }
+      
+      if (projected_monthly_cost / monthly_budget_limit > 0.8) {
+        warnings.push(`Premium model ${model_id} approaching monthly budget limit`);
+      }
+    }
+
+    return { approved, warnings, reason };
+  }
 
   private async trackFailedRequest(
     session_id: string,
