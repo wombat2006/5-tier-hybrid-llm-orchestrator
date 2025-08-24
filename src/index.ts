@@ -53,7 +53,7 @@ app.get('/health', async (req, res) => {
     // 高速化: キャッシュされた結果があり、まだ有効で、強制リフレッシュでない場合は即座に返す
     const now = Date.now();
     if (healthCheckCache && (now - healthCheckCache.timestamp) < HEALTH_CHECK_CACHE_TTL && !forceRefresh) {
-      res.status(healthCheckCache.data.healthy ? 200 : 503).json({
+      res.status(200).json({
         ...healthCheckCache.data,
         cached: true,
         cache_age_ms: now - healthCheckCache.timestamp
@@ -75,7 +75,8 @@ app.get('/health', async (req, res) => {
       timestamp: now
     };
 
-    res.status(healthCheck.healthy ? 200 : 503).json(responseData);
+    // HTTPステータスコードは常に200で返す（UIが503を正しく処理できないため）
+    res.status(200).json(responseData);
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -98,6 +99,50 @@ app.post('/health/clear-cache', (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to clear cache'
+    });
+  }
+});
+
+// LLMモデルヒエラルキー表示
+app.get('/models/hierarchy', (req, res) => {
+  try {
+    const availableModels = orchestrator.getAvailableModels();
+    
+    // Tierごとにモデルを分類
+    const hierarchy = {
+      tier0: { name: "Tier 0 - 無料・最優先", models: [] },
+      tier1: { name: "Tier 1 - 高速汎用", models: [] },
+      tier2: { name: "Tier 2 - 複雑推論", models: [] },
+      tier3: { name: "Tier 3 - 最高品質", models: [] },
+      tier4: { name: "Tier 4 - 最高級推論", models: [] }
+    };
+
+    // モデル情報を取得してTier別に分類
+    availableModels.forEach(model => {
+      const tierKey = `tier${model.tier}` as keyof typeof hierarchy;
+      if (hierarchy[tierKey]) {
+        hierarchy[tierKey].models.push({
+          id: model.id,
+          name: model.name || model.id,
+          provider: model.provider || 'unknown',
+          capabilities: model.capabilities || [],
+          cost_per_1k_tokens: model.cost_per_1k_tokens || { input: 0, output: 0 },
+          latency_ms: model.latency_ms || 'N/A'
+        });
+      }
+    });
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      total_models: availableModels.length,
+      hierarchy: hierarchy
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get model hierarchy',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
