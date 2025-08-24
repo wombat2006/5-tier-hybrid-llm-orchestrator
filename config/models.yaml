@@ -113,7 +113,7 @@ models:
   # Tier 2: Claude 3.5 Sonnet - 複雑推論・統合判断・高性能メインモデル
   claude_sonnet:
     id: claude_sonnet
-    name: claude-3.5-sonnet-20241022  # 直接API使用
+    name: claude-3-5-sonnet-20240620  # Anthropic API安定版
     provider: anthropic
     tier: 2
     cost_per_1k_tokens:
