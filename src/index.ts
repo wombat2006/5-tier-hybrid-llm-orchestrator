@@ -110,11 +110,11 @@ app.get('/models/hierarchy', (req, res) => {
     
     // Tierごとにモデルを分類
     const hierarchy = {
-      tier0: { name: "Tier 0 - 無料・最優先", models: [] },
-      tier1: { name: "Tier 1 - 高速汎用", models: [] },
-      tier2: { name: "Tier 2 - 複雑推論", models: [] },
-      tier3: { name: "Tier 3 - 最高品質", models: [] },
-      tier4: { name: "Tier 4 - 最高級推論", models: [] }
+      tier0: { name: "Tier 0 - 無料・最優先", models: [] as any[] },
+      tier1: { name: "Tier 1 - 高速汎用", models: [] as any[] },
+      tier2: { name: "Tier 2 - 複雑推論", models: [] as any[] },
+      tier3: { name: "Tier 3 - 最高品質", models: [] as any[] },
+      tier4: { name: "Tier 4 - 最高級推論", models: [] as any[] }
     };
 
     // モデル情報を取得してTier別に分類
