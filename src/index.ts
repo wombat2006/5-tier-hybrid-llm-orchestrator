@@ -47,9 +47,12 @@ const HEALTH_CHECK_CACHE_TTL = 30000; // 30秒キャッシュ
 
 app.get('/health', async (req, res) => {
   try {
-    // 高速化: キャッシュされた結果があり、まだ有効な場合は即座に返す
+    // キャッシュクリア強制フラグをチェック
+    const forceRefresh = req.query.nocache === 'true' || req.query.refresh === 'true';
+    
+    // 高速化: キャッシュされた結果があり、まだ有効で、強制リフレッシュでない場合は即座に返す
     const now = Date.now();
-    if (healthCheckCache && (now - healthCheckCache.timestamp) < HEALTH_CHECK_CACHE_TTL) {
+    if (healthCheckCache && (now - healthCheckCache.timestamp) < HEALTH_CHECK_CACHE_TTL && !forceRefresh) {
       res.status(healthCheckCache.data.healthy ? 200 : 503).json({
         ...healthCheckCache.data,
         cached: true,
@@ -79,6 +82,22 @@ app.get('/health', async (req, res) => {
       error: 'Health check failed',
       details: error instanceof Error ? error.message : 'Unknown error',
       cached: false
+    });
+  }
+});
+
+// ヘルスチェックキャッシュクリア
+app.post('/health/clear-cache', (req, res) => {
+  try {
+    healthCheckCache = null;
+    res.json({
+      success: true,
+      message: 'Health check cache cleared'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear cache'
     });
   }
 });
