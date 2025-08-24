@@ -7,7 +7,7 @@
 # ===========================================
 coding_models:
   qwen3_coder:
-    openrouter_id: "qwen/qwen-3-coder-32b-instruct"
+    openrouter_id: "qwen/qwen3-coder:free"
     name: "Qwen3-Coder 32B"
     provider_family: "qwen"
     tier: 0
@@ -102,6 +102,19 @@ reasoning_models:
     context_length: 2000000
     capabilities: [complex_reasoning, multimodal, analysis]
     description: "高性能マルチモーダルモデル"
+
+  gemini_pro_exp:
+    openrouter_id: "google/gemini-2.5-pro-exp-03-25"
+    name: "Gemini 2.5 Pro Experimental"
+    provider_family: "google"
+    tier: 2
+    pricing:
+      prompt: 0.625  # 実験版の価格（推定）
+      completion: 2.5  # 実験版の価格（推定）
+    context_length: 2000000
+    capabilities: [complex_processing, advanced_analysis, structured_output, non_reasoning_tasks]
+    specialties: [data_processing, code_analysis, structured_tasks, complex_workflows]
+    description: "複雑な処理に特化した実験版Gemini、推論不要タスクに最適"
 
 
 # ===========================================

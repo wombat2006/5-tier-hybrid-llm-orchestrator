@@ -18,7 +18,7 @@ export class OpenRouterAPIClient implements BaseLLMClient {
   private modelName: string;
   private stats: UsageStats;
 
-  constructor(modelName: string = 'qwen/qwen-3-coder-32b-instruct') {
+  constructor(modelName: string = 'qwen/qwen3-coder:free') {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       throw new Error('OpenRouter API key not provided');

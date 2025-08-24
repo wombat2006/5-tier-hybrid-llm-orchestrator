@@ -397,7 +397,7 @@ export class OpenRouterModelRegistry {
     const defaultConfig = `# デフォルトOpenRouter設定
 coding_models:
   qwen3_coder_free:
-    openrouter_id: "qwen/qwen-3-coder-32b-instruct:free"
+    openrouter_id: "qwen/qwen3-coder:free"
     name: "Qwen3-Coder (Free)"
     provider_family: "qwen"
     tier: 0
