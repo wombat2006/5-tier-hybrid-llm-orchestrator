@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT Troubleshooting System - 5-Tier LLM Orchestrator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand tech-glow" href="#">
+                <i class="fas fa-terminal me-2"></i>IT TROUBLESHOOTING SYSTEM
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text tech-glow">
+                    <i class="fas fa-microchip me-1"></i>5-TIER LLM ORCHESTRATOR
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- サイドバー -->
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-tools me-2"></i>機能メニュー
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            <button class="list-group-item list-group-item-action" id="log-analysis-tab">
+                                <i class="fas fa-file-alt me-2"></i>ログ解析
+                            </button>
+                            <button class="list-group-item list-group-item-action" id="interactive-troubleshoot-tab">
+                                <i class="fas fa-comments me-2"></i>対話型トラブルシューティング
+                            </button>
+                            <button class="list-group-item list-group-item-action" id="safe-execution-tab">
+                                <i class="fas fa-shield-alt me-2"></i>安全なコマンド実行
+                            </button>
+                            <button class="list-group-item list-group-item-action" id="system-status-tab">
+                                <i class="fas fa-chart-line me-2"></i>システム状態
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- システム情報 -->
+                <div class="card mt-3">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>システム情報
+                        </h6>
+                    </div>
+                    <div class="card-body" id="system-info">
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- メインコンテンツ -->
+            <div class="col-md-9">
+                <!-- ログ解析パネル -->
+                <div id="log-analysis-panel" class="content-panel">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-search me-2"></i>ログ解析システム
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="log-input" class="form-label">ログデータ入力</label>
+                                        <textarea class="form-control" id="log-input" rows="12" placeholder="ログデータをここに貼り付けてください..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="context-input" class="form-label">コンテキスト情報</label>
+                                        <textarea class="form-control" id="context-input" rows="4" placeholder="問題が発生した状況やシステム環境について記述してください..."></textarea>
+                                    </div>
+                                    <button class="btn btn-success" id="analyze-logs-btn">
+                                        <i class="fas fa-play me-2"></i>ログを解析
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">解析結果</label>
+                                        <div id="log-analysis-result" class="analysis-result">
+                                            <div class="text-muted text-center p-4">
+                                                ログを入力して解析ボタンをクリックしてください
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 対話型トラブルシューティングパネル -->
+                <div id="interactive-troubleshoot-panel" class="content-panel" style="display: none;">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">
+                                <i class="fas fa-comments me-2"></i>対話型トラブルシューティング
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div id="chat-container" class="chat-container">
+                                        <div class="welcome-message">
+                                            <i class="fas fa-robot me-2"></i>
+                                            問題を詳しく教えてください。対話的に解決策を見つけていきましょう。
+                                        </div>
+                                    </div>
+                                    <div class="input-group mt-3">
+                                        <input type="text" class="form-control" id="chat-input" placeholder="問題について説明してください...">
+                                        <button class="btn btn-warning" id="send-chat-btn">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-header">セッション情報</div>
+                                        <div class="card-body" id="session-info">
+                                            <small class="text-muted">セッションが開始されていません</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 安全なコマンド実行パネル -->
+                <div id="safe-execution-panel" class="content-panel" style="display: none;">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-shield-alt me-2"></i>安全なコマンド実行
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                実際のコマンド実行は行いません。安全性評価とロールバック計画の提供のみを行います。
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="command-input" class="form-label">実行予定コマンド</label>
+                                        <textarea class="form-control" id="command-input" rows="4" placeholder="実行したいコマンドを入力してください..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="execution-context" class="form-label">実行環境</label>
+                                        <input type="text" class="form-control" id="execution-context" placeholder="例: 本番環境, テスト環境など">
+                                    </div>
+                                    <button class="btn btn-danger" id="assess-command-btn">
+                                        <i class="fas fa-analyze me-2"></i>安全性を評価
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <div id="safety-assessment-result" class="analysis-result">
+                                        <div class="text-muted text-center p-4">
+                                            コマンドを入力して評価ボタンをクリックしてください
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- システム状態パネル -->
+                <div id="system-status-panel" class="content-panel" style="display: none;">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i>システム状態監視
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">ヘルスチェック</div>
+                                        <div class="card-body" id="health-status">
+                                            <div class="d-flex justify-content-center">
+                                                <div class="spinner-border text-info" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">メトリクス</div>
+                                        <div class="card-body" id="metrics-display">
+                                            <div class="d-flex justify-content-center">
+                                                <div class="spinner-border text-info" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

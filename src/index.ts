@@ -20,6 +20,9 @@ app.use(compression()); // gzip圧縮でレスポンスサイズ削減
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// 静的ファイル配信設定
+app.use(express.static('public'));
+
 // CORS対応
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
