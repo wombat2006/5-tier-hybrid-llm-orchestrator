@@ -81,41 +81,7 @@ models:
       - "reasoning"
     api_client: GeminiAPIClient
 
-  # Tier 1: 低コスト汎用・有料コーディングモデル
-  qwen3_coder:
-    id: qwen3_coder
-    name: qwen/qwen3-coder  # OpenRouter有料版（高性能）
-    provider: openrouter
-    tier: 1
-    cost_per_1k_tokens:
-      input: 0.18   # $0.18/1K（1.8/10に修正）
-      output: 0.18  # $0.18/1K（1.8/10に修正）
-    latency_ms: 250
-    max_tokens: 32768  # 有料版は大容量対応
-    capabilities:
-      - coding
-      - debugging
-      - code_review
-      - refactoring
-      - complex_coding
-    languages:
-      - python
-      - javascript
-      - typescript
-      - java
-      - cpp
-      - rust
-      - go
-      - sql
-    priority_keywords:
-      - "複雑なコード"
-      - "大規模実装"
-      - "アーキテクチャ実装"
-      - "complex code"
-      - "large implementation"
-      - "advanced coding"
-    api_client: OpenRouterAPIClient
-
+  # Tier 1: 汎用・無料枠モデル
   gemini_flash:
     id: gemini_flash
     name: gemini:flash  # エイリアス使用: gemini-1.5-flash-002
@@ -144,17 +110,17 @@ models:
       - "translate"
     api_client: GeminiAPIClient
 
-  # Tier 2: Claude Sonnet 4 - 複雑推論・統合判断・高性能メインモデル (2025年最新)
+  # Tier 2: Claude 3.5 Sonnet - 複雑推論・統合判断・高性能メインモデル
   claude_sonnet:
     id: claude_sonnet
-    name: claude:stable  # エイリアス使用: claude-sonnet-4-20250514
+    name: claude-3.5-sonnet-20241022  # 直接API使用
     provider: anthropic
     tier: 2
     cost_per_1k_tokens:
-      input: 3.00   # $3.00/1K入力トークン (3.5と同料金)
-      output: 15.00 # $15.00/1K出力トークン (3.5と同料金)
-    latency_ms: 900   # 若干改善
-    max_tokens: 64000  # 大幅拡張: 8K -> 64K
+      input: 3.00   # $3.00/1K入力トークン
+      output: 15.00 # $15.00/1K出力トークン
+    latency_ms: 900
+    max_tokens: 8192
     capabilities:
       - complex_reasoning
       - integration
@@ -162,9 +128,7 @@ models:
       - technical_writing
       - code_review
       - general_tasks
-      - extended_thinking  # 新機能
-      - advanced_coding    # SWE-bench 72.7%
-      - memory_management  # 改善されたメモリ機能
+      - advanced_coding
     priority_keywords:
       - "設計"
       - "アーキテクチャ"
@@ -174,7 +138,6 @@ models:
       - "architecture"
       - "complex"
       - "integration"
-      - "extended"
       - "reasoning"
     api_client: AnthropicAPIClient
 
@@ -343,10 +306,10 @@ collaboration:
 # コスト管理
 cost_management:
   monthly_budget_usd: 70.0   # 月間予算
-  tier0_allocation: 0.05     # 5% - 無料枠（制限あり）
-  tier1_allocation: 0.45     # 45% - 低コストモデル（Qwen3 Coder有料版、Gemini Flash）
-  tier2_allocation: 0.35     # 35% - Claude Sonnet 4
-  tier3_allocation: 0.10     # 10% - Premium models（GPT-4o、Gemini Pro）
+  tier0_allocation: 0.05     # 5% - 無料枠（Qwen3 Coder Free、Gemini 2.5 Pro Exp）
+  tier1_allocation: 0.15     # 15% - 低コストモデル（Gemini Flash）※ほぼ無料
+  tier2_allocation: 0.60     # 60% - Claude 3.5 Sonnet（メインモデル）
+  tier3_allocation: 0.15     # 15% - Premium models（GPT-4o、Gemini Pro）
   tier4_allocation: 0.05     # 5% - Ultimate models（GPT-5）※厳格制限
   
   # GPT-5専用高コスト制限

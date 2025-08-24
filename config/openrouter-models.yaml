@@ -78,18 +78,18 @@ general_models:
 # ===========================================
 reasoning_models:
   claude_sonnet:
-    openrouter_id: "claude:sonnet4"  # エイリアス: anthropic/claude-sonnet-4
-    name: "Claude Sonnet 4"
+    openrouter_id: "anthropic/claude-3.5-sonnet"  # 利用可能な最新Claude Sonnet
+    name: "Claude 3.5 Sonnet"
     provider_family: "anthropic"
     tier: 2
     pricing:
-      prompt: 3.0   # 同料金で高性能
+      prompt: 3.0
       completion: 15.0
     context_length: 200000
     capabilities: [complex_reasoning, analysis, writing, coding, extended_thinking, advanced_coding, memory_management]
     specialties: [technical_writing, architectural_design, swe_bench]
     rate_limits: {requests_per_minute: 50, daily_limit: 500}
-    description: "最新Claude 4モデル - 同料金で大幅性能向上 (SWE-bench 72.7%、最大64K出力)"
+    description: "Claude 3.5 Sonnet - 高性能推論とコーディング支援"
 
   gemini_pro:
     openrouter_id: "google/gemini-pro-1.5"
