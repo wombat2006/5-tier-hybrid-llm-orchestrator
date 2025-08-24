@@ -58,10 +58,12 @@ aliases:
   gemini:
     # 公式エイリアス（Google公式で自動更新される）
     stable: "gemini-2.5-pro"                # 安定版（公式推奨）
-    latest: "gemini-2.5-pro"                # 最新版（公式自動更新）
+    latest: "gemini-2.5-pro-002"            # 最新版（Gemini 2.5 Pro Exp）
+    experimental: "gemini-2.5-pro-002"      # 実験版（Gemini 2.5 Pro Exp）
     
     # Gemini 2.5シリーズ（2025年最新・安定版）
     "2.5-pro": "gemini-2.5-pro"            # Gemini 2.5 Pro（公式エイリアス）
+    "2.5-pro-exp": "gemini-2.5-pro-002"    # Gemini 2.5 Pro Experimental（無料実験版）
     "2.5-flash": "gemini-2.5-flash"        # Gemini 2.5 Flash（公式エイリアス）
     "2.5-flash-lite": "gemini-2.5-flash-lite" # Gemini 2.5 Flash-Lite（公式エイリアス）
     
@@ -81,14 +83,14 @@ aliases:
   # Qwen エイリアス
   # ===========================================
   qwen:
-    stable: "qwen/qwen-3-coder-32b-instruct"      # 安定版
-    latest: "qwen/qwen-3-coder-32b-instruct"      # 最新版
-    free: "qwen/qwen-3-coder-32b-instruct:free"   # 無料版
+    stable: "qwen/qwen3-coder:free"      # 安定版
+    latest: "qwen/qwen3-coder:free"      # 最新版
+    free: "qwen/qwen3-coder:free"   # 無料版
     legacy: "qwen/qwen-2.5-coder-32b-instruct"    # 旧版
     
     # 具体的なバリエーション
-    coder: "qwen/qwen-3-coder-32b-instruct"       # コーダー特化
-    coder-free: "qwen/qwen-3-coder-32b-instruct:free"  # コーダー無料
+    coder: "qwen/qwen3-coder:free"       # コーダー特化
+    coder-free: "qwen/qwen3-coder:free"  # コーダー無料
     math: "qwen/qwen-2.5-math-72b-instruct"       # 数学特化
     general: "qwen/qwen-2.5-72b-instruct"         # 汎用
     

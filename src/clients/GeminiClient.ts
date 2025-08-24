@@ -25,7 +25,13 @@ export class GeminiAPIClient implements BaseLLMClient {
     this.apiKey = apiKey;
     this.client = new GoogleGenerativeAI(apiKey);
     this.modelName = modelName;
-    this.model = this.client.getGenerativeModel({ model: modelName });
+    
+    // Gemini 2.5 Pro Expをサポート
+    if (modelName === 'gemini-2.5-pro-exp' || modelName === 'gemini-2.5-pro-002') {
+      this.modelName = 'gemini-2.5-pro-002';
+    }
+    
+    this.model = this.client.getGenerativeModel({ model: this.modelName });
     
     this.stats = {
       total_requests: 0,
@@ -42,6 +48,19 @@ export class GeminiAPIClient implements BaseLLMClient {
     this.stats.total_requests++;
 
     try {
+      // Gemini 2.5 Pro Expが無効な場合のフォールバック処理
+      if (this.modelName === 'gemini-2.5-pro-002') {
+        try {
+          console.log(`[Gemini ${this.modelName}] Generating response with Gemini 2.5 Pro Exp...`);
+          const result = await this.tryGeminiProExp(prompt, options);
+          return result;
+        } catch (error) {
+          console.warn(`[Gemini] Gemini 2.5 Pro Exp failed, falling back to Gemini 2.5 Flash...`);
+          this.modelName = 'gemini-2.5-flash';
+          this.model = this.client.getGenerativeModel({ model: this.modelName });
+        }
+      }
+      
       console.log(`[Gemini ${this.modelName}] Generating response...`);
       
       const generationConfig = {
@@ -66,15 +85,18 @@ export class GeminiAPIClient implements BaseLLMClient {
       const estimatedOutputTokens = Math.ceil(responseText.length / 4);
       const totalTokens = estimatedInputTokens + estimatedOutputTokens;
 
-      // コスト計算（Gemini Flashは無料枠、Proは有料）
+      // コスト計算（Gemini Flash無料、Pro有料、Gemini 2.5 Pro Exp無料）
       let inputCostPerK = 0;
       let outputCostPerK = 0;
       
-      if (this.modelName.includes('pro')) {
+      if (this.modelName.includes('pro') && !this.modelName.includes('2.5-pro-002')) {
         inputCostPerK = 1.25; // $1.25 per 1K input tokens
         outputCostPerK = 5.00; // $5.00 per 1K output tokens
+      } else if (this.modelName === 'gemini-2.5-pro-002') {
+        inputCostPerK = 0; // Gemini 2.5 Pro Exp は実験中のため無料
+        outputCostPerK = 0;
       }
-      // Flash は無料枠のため0
+      // Flash と Exp は無料枠のため0
 
       const costInfo: CostInfo = {
         input_cost_usd: (estimatedInputTokens / 1000) * inputCostPerK,
@@ -95,23 +117,29 @@ export class GeminiAPIClient implements BaseLLMClient {
       this.stats.total_cost_usd += costInfo.total_cost_usd;
       this.updateAverageLatency(latency);
 
+      // モデル識別とTier決定
+      const isGeminiProExp = this.modelName === 'gemini-2.5-pro-002';
+      const isGeminiPro = this.modelName.includes('pro') && !isGeminiProExp;
+      const modelUsed = isGeminiProExp ? 'gemini_2.5_pro_exp' : (isGeminiPro ? 'gemini_pro' : 'gemini_flash');
+      const tierUsed = isGeminiProExp ? 0 : (isGeminiPro ? 3 : 1); // Gemini 2.5 Pro Exp はTier 0
+
       const llmResponse: LLMResponse = {
         success: true,
-        model_used: this.modelName.includes('pro') ? 'gemini_pro' : 'gemini_flash',
-        tier_used: this.modelName.includes('pro') ? 3 : 1,
+        model_used: modelUsed,
+        tier_used: tierUsed,
         response_text: responseText,
         metadata: {
-          model_id: this.modelName.includes('pro') ? 'gemini_pro' : 'gemini_flash',
+          model_id: modelUsed,
           provider: 'google',
           tokens_used: {
             input: estimatedInputTokens,
             output: estimatedOutputTokens,
             total: totalTokens
           },
-          confidence_score: 0.8,
-          quality_score: this.modelName.includes('pro') ? 0.9 : 0.75,
+          confidence_score: isGeminiProExp ? 0.95 : (isGeminiPro ? 0.9 : 0.8),
+          quality_score: isGeminiProExp ? 0.98 : (isGeminiPro ? 0.9 : 0.75),
           generated_at: new Date().toISOString(),
-          tier_used: this.modelName.includes('pro') ? 3 : 1,
+          tier_used: tierUsed,
           processing_time_ms: endTime - startTime,
           estimated_complexity: prompt.length / 100
         },
@@ -139,17 +167,22 @@ export class GeminiAPIClient implements BaseLLMClient {
         retry_count: 0
       };
 
+      const isGeminiProExp = this.modelName === 'gemini-2.5-pro-002';
+      const isGeminiPro = this.modelName.includes('pro') && !isGeminiProExp;
+      const modelUsed = isGeminiProExp ? 'gemini_2.5_pro_exp' : (isGeminiPro ? 'gemini_pro' : 'gemini_flash');
+      const tierUsed = isGeminiProExp ? 0 : (isGeminiPro ? 3 : 1);
+
       return {
         success: false,
-        model_used: this.modelName.includes('pro') ? 'gemini_pro' : 'gemini_flash',
-        tier_used: this.modelName.includes('pro') ? 3 : 1,
+        model_used: modelUsed,
+        tier_used: tierUsed,
         error: apiError,
         metadata: {
-          model_id: this.modelName.includes('pro') ? 'gemini_pro' : 'gemini_flash',
+          model_id: modelUsed,
           provider: 'google',
           tokens_used: { input: 0, output: 0, total: 0 },
           generated_at: new Date().toISOString(),
-          tier_used: this.modelName.includes('pro') ? 3 : 1,
+          tier_used: tierUsed,
           processing_time_ms: 0,
           estimated_complexity: 0
         },
@@ -206,6 +239,77 @@ export class GeminiAPIClient implements BaseLLMClient {
       average_latency_ms: 0,
       total_tokens_used: 0,
       total_cost_usd: 0
+    };
+  }
+
+  private async tryGeminiProExp(prompt: string, options: GenerationOptions): Promise<LLMResponse> {
+    const startTime = Date.now();
+    
+    const generationConfig = {
+      temperature: options.temperature || 0.7,
+      topP: options.top_p || 0.9,
+      maxOutputTokens: options.max_tokens || 8192, // Gemini 2.5 Pro Expは大容量対応
+    };
+
+    // Gemini 2.5 Pro Expへの特別な設定
+    const result = await this.model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        ...generationConfig,
+        candidateCount: 1,
+        stopSequences: options.stop_sequences || []
+      }
+    });
+
+    const endTime = Date.now();
+    const latency = endTime - startTime;
+    const response = await result.response;
+    const responseText = response.text();
+
+    const estimatedInputTokens = Math.ceil(prompt.length / 4);
+    const estimatedOutputTokens = Math.ceil(responseText.length / 4);
+    const totalTokens = estimatedInputTokens + estimatedOutputTokens;
+
+    const costInfo: CostInfo = {
+      input_cost_usd: 0, // 実験中のため無料
+      output_cost_usd: 0,
+      total_cost_usd: 0
+    };
+
+    const performanceInfo: PerformanceInfo = {
+      latency_ms: latency,
+      processing_time_ms: latency,
+      fallback_used: false,
+      tier_escalation: false
+    };
+
+    this.stats.successful_requests++;
+    this.stats.total_tokens_used += totalTokens;
+    this.stats.total_cost_usd += costInfo.total_cost_usd;
+    this.updateAverageLatency(latency);
+
+    return {
+      success: true,
+      model_used: 'gemini_2.5_pro_exp',
+      tier_used: 0, // Tier 0として扱う
+      response_text: responseText,
+      metadata: {
+        model_id: 'gemini_2.5_pro_exp',
+        provider: 'google',
+        tokens_used: {
+          input: estimatedInputTokens,
+          output: estimatedOutputTokens,
+          total: totalTokens
+        },
+        confidence_score: 0.95, // 高性能モデルとして高スコア
+        quality_score: 0.98,
+        generated_at: new Date().toISOString(),
+        tier_used: 0,
+        processing_time_ms: endTime - startTime,
+        estimated_complexity: prompt.length / 100
+      },
+      cost_info: costInfo,
+      performance_info: performanceInfo
     };
   }
 }

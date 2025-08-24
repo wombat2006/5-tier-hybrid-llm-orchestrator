@@ -9,7 +9,7 @@ models:
   # Tier 0: レガシーQwen3 Coder設定（非推奨：OpenRouter設定を優先）
   legacy_qwen3_coder:
     id: legacy_qwen3_coder
-    name: qwen/qwen-3-coder-32b-instruct
+    name: qwen/qwen3-coder:free
     provider: openrouter
     tier: 0
     cost_per_1k_tokens:
@@ -44,6 +44,39 @@ models:
       - "script"
       - "debug"
     api_client: OpenRouterAPIClient
+
+  # Tier 0: Gemini 2.5 Pro Exp - 最高性能・実験版・無料（実装実験中のため課金されない）
+  gemini_2_5_pro_exp:
+    id: gemini_2_5_pro_exp
+    name: gemini:experimental  # エイリアス使用: gemini-2.5-pro-002
+    provider: google
+    tier: 0
+    cost_per_1k_tokens:
+      input: 0.00   # 実験版のため無料
+      output: 0.00  # 実験版のため無料
+    latency_ms: 400
+    max_tokens: 8192
+    capabilities:
+      - advanced_reasoning
+      - complex_analysis
+      - architectural_design
+      - technical_writing
+      - code_generation
+      - performance_optimization
+      - high_quality_generation
+    priority_keywords:
+      - "複雑"
+      - "アーキテクチャ"
+      - "高度"
+      - "分析"
+      - "設計"
+      - "complex"
+      - "advanced"
+      - "architecture"
+      - "design"
+      - "analysis"
+      - "reasoning"
+    api_client: GeminiAPIClient
 
   # Tier 1: Gemini Flash - 一般調査・検証・無料枠
   gemini_flash:
@@ -164,25 +197,28 @@ routing:
   max_retries: 3
   timeout_ms: 30000
 
-  # タスク分類ルール
+  # タスク分類ルール（Gemini 2.5 Pro Expを優先）
   task_classification:
+    experimental_priority:
+      keywords: ["複雑", "アーキテクチャ", "高度", "分析", "設計", "complex", "advanced", "architecture", "design", "analysis", "reasoning"]
+      preferred_tier: 0  # Gemini 2.5 Pro Exp優先
     coding:
       keywords: ["code", "コード", "function", "関数", "implement", "実装", "script", "スクリプト", "debug", "デバッグ", "program", "プログラム"]
-      preferred_tier: 0
+      preferred_tier: 0  # OpenRouter Qwen との併用
     general:
       keywords: ["explain", "説明", "what", "何", "how", "どう", "why", "なぜ"]
       preferred_tier: 1
     complex_analysis:
       keywords: ["analyze", "分析", "design", "設計", "architecture", "アーキテクチャ", "strategy", "戦略"]
-      preferred_tier: 2
+      preferred_tier: 0  # Gemini 2.5 Pro Exp優先にシフト
     premium:
       keywords: ["critical", "重要", "strategic", "戦略的", "premium", "最高品質"]
       preferred_tier: 3
 
 # 協調メカニズム設定
 collaboration:
-  cascade_enabled: true      # フォールバック機能
-  refinement_enabled: true   # 上位Tierでの改善
+  cascade_enabled: false     # フォールバック機能（Gemini性能評価用に無効化）
+  refinement_enabled: false  # 上位Tierでの改善（Gemini性能評価用に無効化）
   parallel_enabled: false    # 並列処理（リソース消費大）
   
   quality_thresholds:

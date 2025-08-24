@@ -200,6 +200,7 @@ export interface GenerationOptions {
   temperature?: number;
   top_p?: number;
   timeout_ms?: number;
+  stop_sequences?: string[];
   metadata?: Record<string, any>;
 }
 
