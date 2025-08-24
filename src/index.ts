@@ -3,6 +3,8 @@ import express from 'express';
 import compression from 'compression';
 import { LLMOrchestrator } from './orchestrator/LLMOrchestrator';
 import LogAnalysisService, { LogAnalysisRequest } from './services/LogAnalysisService';
+import InteractiveTroubleshooter from './services/InteractiveTroubleshooter';
+import AdvancedLogAnalyzer, { LogAnalysisContext } from './services/AdvancedLogAnalyzer';
 import { ToolOrchestratorService, AnalysisToolRequest } from './services/ToolOrchestratorService';
 import { CLIRequest } from './services/CLIInterfaceManager';
 import { LLMRequest } from './types';
@@ -30,13 +32,20 @@ app.use((req, res, next) => {
 let orchestrator: LLMOrchestrator;
 let toolOrchestrator: ToolOrchestratorService;
 const logAnalysisService = new LogAnalysisService();
+const interactiveTroubleshooter = new InteractiveTroubleshooter();
+const advancedLogAnalyzer = new AdvancedLogAnalyzer();
 
 try {
   orchestrator = new LLMOrchestrator();
   toolOrchestrator = ToolOrchestratorService.getInstance();
-  console.log('🚀 LLM Orchestrator, Tool Orchestrator, and Log Analysis Service initialized successfully');
+  console.log('🚀 All services initialized successfully');
+  console.log('   - LLM Orchestrator ✅');
+  console.log('   - Tool Orchestrator ✅');
+  console.log('   - Log Analysis Service ✅');
+  console.log('   - Interactive Troubleshooter ✅');
+  console.log('   - Advanced Log Analyzer ✅');
 } catch (error) {
-  console.error('❌ Failed to initialize orchestrators:', error);
+  console.error('❌ Failed to initialize services:', error);
   process.exit(1);
 }
 
@@ -453,6 +462,230 @@ Focus on practical, executable solutions for system administrators.
     return res.status(500).json({
       success: false,
       error: 'Log analysis failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 🆕 インタラクティブトラブルシューティング開始
+app.post('/troubleshoot/start', async (req, res) => {
+  try {
+    const { problem_description, user_id } = req.body;
+
+    if (!problem_description || typeof problem_description !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'problem_description is required and must be a string'
+      });
+    }
+
+    console.log(`\n🚀 Starting troubleshooting session`);
+    console.log(`📝 Problem: ${problem_description.substring(0, 100)}...`);
+
+    const response = await interactiveTroubleshooter.startTroubleshootingSession(
+      problem_description,
+      user_id
+    );
+
+    return res.status(200).json(response);
+
+  } catch (error) {
+    console.error('❌ Error in /troubleshoot/start endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to start troubleshooting session',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 🆕 ユーザー回答処理
+app.post('/troubleshoot/answer', async (req, res) => {
+  try {
+    const { session_id, question_id, answer } = req.body;
+
+    if (!session_id || !question_id || !answer) {
+      return res.status(400).json({
+        success: false,
+        error: 'session_id, question_id, and answer are required'
+      });
+    }
+
+    console.log(`\n💬 Processing answer for session ${session_id}`);
+    console.log(`❓ Question: ${question_id}`);
+    console.log(`📝 Answer: ${answer.substring(0, 100)}...`);
+
+    const response = await interactiveTroubleshooter.processUserResponse(
+      session_id,
+      question_id,
+      answer
+    );
+
+    return res.status(200).json(response);
+
+  } catch (error) {
+    console.error('❌ Error in /troubleshoot/answer endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to process answer',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 🆕 診断実行
+app.post('/troubleshoot/diagnose', async (req, res) => {
+  try {
+    const { session_id } = req.body;
+
+    if (!session_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'session_id is required'
+      });
+    }
+
+    console.log(`\n🔬 Performing diagnosis for session ${session_id}`);
+
+    const response = await interactiveTroubleshooter.performDiagnosis(session_id);
+
+    return res.status(200).json(response);
+
+  } catch (error) {
+    console.error('❌ Error in /troubleshoot/diagnose endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to perform diagnosis',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 🆕 解決プロセス開始
+app.post('/troubleshoot/resolve', async (req, res) => {
+  try {
+    const { session_id, approved_actions } = req.body;
+
+    if (!session_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'session_id is required'
+      });
+    }
+
+    console.log(`\n🔧 Starting resolution for session ${session_id}`);
+
+    const response = await interactiveTroubleshooter.startResolution(
+      session_id,
+      approved_actions
+    );
+
+    return res.status(200).json(response);
+
+  } catch (error) {
+    console.error('❌ Error in /troubleshoot/resolve endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to start resolution',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 🆕 セッション状態取得
+app.get('/troubleshoot/session/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    console.log(`\n📋 Getting session status: ${sessionId}`);
+
+    const session = interactiveTroubleshooter.getSessionStatus(sessionId);
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        error: 'Session not found'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      session: session
+    });
+
+  } catch (error) {
+    console.error('❌ Error in /troubleshoot/session endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to get session status',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 🆕 アクティブセッション一覧
+app.get('/troubleshoot/sessions', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+
+    console.log(`\n📂 Getting active sessions${user_id ? ` for user ${user_id}` : ''}`);
+
+    const sessions = interactiveTroubleshooter.getActiveSessions(
+      user_id as string | undefined
+    );
+
+    return res.status(200).json({
+      success: true,
+      sessions: sessions,
+      total: sessions.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error in /troubleshoot/sessions endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to get active sessions',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 🆕 高度ログ解析（AdvancedLogAnalyzer使用）
+app.post('/troubleshoot/analyze-advanced', async (req, res) => {
+  try {
+    const { raw_logs, context } = req.body;
+
+    if (!raw_logs || typeof raw_logs !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'raw_logs is required and must be a string'
+      });
+    }
+
+    if (!context || typeof context !== 'object') {
+      return res.status(400).json({
+        success: false,
+        error: 'context is required and must be an object'
+      });
+    }
+
+    console.log(`\n🧠 Advanced log analysis requested`);
+    console.log(`📊 Log size: ${raw_logs.length} characters`);
+    console.log(`🔍 Context: ${context.user_description?.substring(0, 50)}...`);
+
+    const diagnosis = await advancedLogAnalyzer.analyzeUserLogs(raw_logs, context);
+
+    return res.status(200).json({
+      success: true,
+      diagnosis: diagnosis,
+      analysis_timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Error in /troubleshoot/analyze-advanced endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Advanced log analysis failed',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
@@ -1064,13 +1297,23 @@ app.listen(port, () => {
   console.log('🌟 =====================================');
   console.log(`📡 Server running on port ${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log('\n📋 Available endpoints:');
+  console.log('\n📋 Core endpoints:');
   console.log(`   GET    http://localhost:${port}/health`);
   console.log(`   GET    http://localhost:${port}/info`);
   console.log(`   GET    http://localhost:${port}/metrics`);
   console.log(`   POST   http://localhost:${port}/generate`);
   console.log(`   POST   http://localhost:${port}/code`);
   console.log(`   POST   http://localhost:${port}/rag/search`);
+  console.log('');
+  console.log('🔧 IT Troubleshooting endpoints:');
+  console.log(`   POST   http://localhost:${port}/analyze-logs`);
+  console.log(`   POST   http://localhost:${port}/troubleshoot/start`);
+  console.log(`   POST   http://localhost:${port}/troubleshoot/answer`);
+  console.log(`   POST   http://localhost:${port}/troubleshoot/diagnose`);
+  console.log(`   POST   http://localhost:${port}/troubleshoot/resolve`);
+  console.log(`   GET    http://localhost:${port}/troubleshoot/session/:sessionId`);
+  console.log(`   GET    http://localhost:${port}/troubleshoot/sessions`);
+  console.log(`   POST   http://localhost:${port}/troubleshoot/analyze-advanced`);
   console.log('');
   console.log('🤖 OpenAI Assistant API endpoints:');
   console.log(`   POST   http://localhost:${port}/assistant/file-search`);

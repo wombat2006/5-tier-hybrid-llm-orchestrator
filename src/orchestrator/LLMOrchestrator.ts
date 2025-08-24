@@ -1246,8 +1246,9 @@ export class LLMOrchestrator {
       'semantic_search': 'complex_analysis',
       'vector_upsert': 'coding',
       'vector_delete': 'coding',
-      // 'file_upload': 'general', // TaskTypeに存在しないためコメントアウト
-      // 'file_download': 'general', // TaskTypeに存在しないためコメントアウト
+      'file_search': 'complex_analysis',
+      'code_interpreter': 'premium',
+      'general_assistant': 'complex_analysis',
       'code_execution': 'premium',
       'assistant_file_search': 'complex_analysis',
       'assistant_code_interpreter': 'premium',

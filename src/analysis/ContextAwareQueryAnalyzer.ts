@@ -36,7 +36,7 @@ export class ContextAwareQueryAnalyzer {
     console.log(`[ContextAwareQueryAnalyzer] Analyzing with context: ${context.turn_count} turns`);
     
     // コンテキスト考慮による分析の調整
-    const contextEnhancedAnalysis = this.enhanceAnalysisWithContext(baseAnalysis, context);
+    const contextEnhancedAnalysis = this.enhanceAnalysisWithContext(baseAnalysis, context, request);
     
     return contextEnhancedAnalysis;
   }
@@ -46,7 +46,8 @@ export class ContextAwareQueryAnalyzer {
    */
   private enhanceAnalysisWithContext(
     baseAnalysis: QueryAnalysis, 
-    context: ConversationContext
+    context: ConversationContext,
+    request: LLMRequest
   ): QueryAnalysis {
     const enhanced = { ...baseAnalysis };
     
@@ -54,27 +55,31 @@ export class ContextAwareQueryAnalyzer {
     const continuityBonus = this.calculateContinuityBonus(context);
     
     // 2. 複雑度エスカレーション検出
-    const complexityEscalation = this.detectComplexityEscalation(baseAnalysis, context);
+    const complexityEscalation = this.detectComplexityEscalation(baseAnalysis, request, context);
     
     // 3. トピック変化分析
-    const topicShift = this.analyzeTopicShift(baseAnalysis, context);
+    const topicShift = this.analyzeTopicShift(request, context);
     
     // 4. モデル性能履歴考慮
     const modelPerformanceAdjustment = this.adjustForModelPerformance(context);
 
-    // 分析結果の調整
-    enhanced.complexity = Math.min(
-      baseAnalysis.complexity + complexityEscalation + continuityBonus, 
-      10
-    );
+    // 複雑度の調整（文字列値なので直接調整はせず、escalationの影響を反映）
+    if (complexityEscalation > 2) {
+      if (baseAnalysis.complexity === 'trivial') enhanced.complexity = 'simple';
+      else if (baseAnalysis.complexity === 'simple') enhanced.complexity = 'moderate';
+      else if (baseAnalysis.complexity === 'moderate') enhanced.complexity = 'complex';
+      else if (baseAnalysis.complexity === 'complex') enhanced.complexity = 'expert';
+    }
     
-    enhanced.reasoning_depth = Math.min(
-      baseAnalysis.reasoning_depth + (topicShift ? 2 : 0),
-      10
-    );
+    // 推論深度の調整
+    if (topicShift) {
+      if (baseAnalysis.reasoningDepth === 'shallow') enhanced.reasoningDepth = 'moderate';
+      else if (baseAnalysis.reasoningDepth === 'moderate') enhanced.reasoningDepth = 'deep';
+    }
     
-    enhanced.confidence_score = Math.max(
-      baseAnalysis.confidence_score * (1 + modelPerformanceAdjustment),
+    // 信頼度の調整
+    enhanced.confidenceScore = Math.max(
+      baseAnalysis.confidenceScore * (1 + modelPerformanceAdjustment),
       0.1
     );
 
@@ -84,11 +89,11 @@ export class ContextAwareQueryAnalyzer {
       complexity_escalation: complexityEscalation,
       topic_shift: topicShift,
       model_performance_factor: modelPerformanceAdjustment,
-      conversation_turns: context.turn_count,
+      conversation_turns: context.turn_count || 0,
       current_complexity_level: context.current_complexity || 1
     };
 
-    console.log(`[ContextAwareQueryAnalyzer] Enhanced analysis - Complexity: ${baseAnalysis.complexity} → ${enhanced.complexity}, Confidence: ${baseAnalysis.confidence_score?.toFixed(2)} → ${enhanced.confidence_score?.toFixed(2)}`);
+    console.log(`[ContextAwareQueryAnalyzer] Enhanced analysis - Complexity: ${baseAnalysis.complexity} → ${enhanced.complexity}, Confidence: ${baseAnalysis.confidenceScore?.toFixed(2)} → ${enhanced.confidenceScore?.toFixed(2)}`);
     
     return enhanced;
   }
@@ -112,7 +117,8 @@ export class ContextAwareQueryAnalyzer {
    * 複雑度エスカレーション検出
    */
   private detectComplexityEscalation(
-    currentAnalysis: QueryAnalysis, 
+    baseAnalysis: QueryAnalysis,
+    request: LLMRequest, 
     context: ConversationContext
   ): number {
     if (!context.previous_responses || context.previous_responses.length === 0) return 0;
@@ -128,7 +134,7 @@ export class ContextAwareQueryAnalyzer {
     ];
 
     const hasEscalation = escalationKeywords.some(keyword => 
-      currentAnalysis.query.toLowerCase().includes(keyword.toLowerCase())
+      request.prompt.toLowerCase().includes(keyword.toLowerCase())
     );
 
     // 前回の応答が簡潔だった場合の追加質問検出
@@ -144,7 +150,7 @@ export class ContextAwareQueryAnalyzer {
       console.log('[ContextAwareQueryAnalyzer] Detected complexity escalation keywords');
     }
     
-    if (wasSimpleResponse && currentAnalysis.query.length > 100) {
+    if (wasSimpleResponse && request.prompt.length > 100) {
       escalationBonus += 1.5;
       console.log('[ContextAwareQueryAnalyzer] Detected follow-up to simple response');
     }
@@ -152,7 +158,7 @@ export class ContextAwareQueryAnalyzer {
     // 連続する「なぜ」「how」質問の検出
     const questionWords = ['why', 'how', 'what', 'when', 'where', 'なぜ', 'どう', 'どのように'];
     const hasQuestionWords = questionWords.some(word => 
-      currentAnalysis.query.toLowerCase().includes(word)
+      request.prompt.toLowerCase().includes(word)
     );
     
     if (hasQuestionWords && recentResponses.length > 1) {
@@ -166,13 +172,13 @@ export class ContextAwareQueryAnalyzer {
    * トピック変化分析
    */
   private analyzeTopicShift(
-    currentAnalysis: QueryAnalysis, 
+    request: LLMRequest, 
     context: ConversationContext
   ): boolean {
     if (!context.previous_responses || context.previous_responses.length === 0) return false;
     
     // 簡略化した実装：キーワード比較によるトピック変化検出
-    const currentKeywords = this.extractKeywords(currentAnalysis.query);
+    const currentKeywords = this.extractKeywords(request.prompt);
     
     const recentResponse = context.previous_responses[context.previous_responses.length - 1];
     if (!recentResponse.response_text) return false;
@@ -235,7 +241,14 @@ export class ContextAwareQueryAnalyzer {
     reasoning: string;
     confidence: number;
   } {
-    const contextFactors = analysis.context_factors || {};
+    const contextFactors = analysis.context_factors || {
+      complexity_escalation: 0,
+      topic_shift: false,
+      continuity_bonus: 0,
+      model_performance_factor: 0,
+      conversation_turns: 0,
+      current_complexity_level: 1
+    };
     
     // 複雑度エスカレーションが高い場合は上位モデル推奨
     if (contextFactors.complexity_escalation > 1.5) {
