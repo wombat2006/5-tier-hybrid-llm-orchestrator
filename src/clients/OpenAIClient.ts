@@ -53,7 +53,7 @@ export class OpenAIAPIClient implements BaseLLMClient {
             content: prompt
           }
         ],
-        max_tokens: options.max_tokens || 4096,
+        max_completion_tokens: options.max_tokens || 4096,
         temperature: options.temperature || 0.7,
         top_p: options.top_p || 1,
         // 機微情報保護：自己学習防止設定
@@ -189,7 +189,7 @@ export class OpenAIAPIClient implements BaseLLMClient {
             content: 'Hello'
           }
         ],
-        max_tokens: 5
+        max_completion_tokens: 5
       });
       return response && response.choices && response.choices.length > 0;
     } catch (error) {
