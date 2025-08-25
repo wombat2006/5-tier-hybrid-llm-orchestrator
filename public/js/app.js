@@ -245,10 +245,43 @@ class ITTroubleshootingApp {
         this.addChatMessage(message, 'user');
         chatInput.value = '';
 
+        // ログパターンを自動検出（非同期）
+        const logDetectionMessage = this.addChatMessage('🔍 入力内容を確認中...', 'system', true);
+        
+        const isLog = await this.isLogContent(message);
+        this.removeChatMessage(logDetectionMessage);
+        
+        if (isLog) {
+            this.addChatMessage('📊 ログコンテンツを検出しました。自動的にログ解析を実行します...', 'system');
+            await this.performAutoLogAnalysis(message, message); // ユーザーメッセージも渡す
+            return;
+        }
+
+        // 深い洞察要求を検出
+        const deepAnalysisRequest = this.detectDeepAnalysisRequest(message);
+        
+        let loadingMessage = '回答を準備中...';
+        if (deepAnalysisRequest.isDeepAnalysis) {
+            if (deepAnalysisRequest.isExplicitWallBounce) {
+                loadingMessage = `🎯 マルチTier壁打ち分析を実行中...`;
+                this.addChatMessage(`🎪 壁打ち要求を検出しました。複数のAIで並行分析を開始します！`, 'system');
+            } else {
+                loadingMessage = `🧠 ${deepAnalysisRequest.intensityLevel}レベルの分析を実行中...`;
+                this.addChatMessage(`💡 深い洞察要求を検出しました。上位Tierモデルで処理します。`, 'system');
+            }
+        }
+
         // ローディングメッセージを表示
-        const loadingId = this.addChatMessage('回答を準備中...', 'system', true);
+        const loadingId = this.addChatMessage(loadingMessage, 'system', true);
 
         try {
+            // 深い洞察要求または複雑な質問の場合は壁打ちを実行
+            if (deepAnalysisRequest.isDeepAnalysis || this.isComplexQuestion(message)) {
+                await this.performMultiTierWallBounce(message, deepAnalysisRequest, loadingId);
+                return;
+            }
+
+            // 通常のトラブルシューティングセッション
             let response;
             if (!this.currentSession) {
                 // 新しいセッションを開始
@@ -866,27 +899,58 @@ class ITTroubleshootingApp {
         statsDiv.innerHTML = html;
     }
 
-    updateTierStatus() {
-        const tierStatusDiv = document.getElementById('tier-status');
-        
-        const tierInfo = [
-            { name: 'Tier 0', model: 'Qwen3 Coder', status: 'active', usage: '45%' },
-            { name: 'Tier 1', model: 'Gemini Flash', status: 'active', usage: '32%' },
-            { name: 'Tier 2', model: 'Claude Sonnet', status: 'active', usage: '18%' },
-            { name: 'Tier 3', model: 'GPT-4o', status: 'active', usage: '5%' }
-        ];
+    async updateTierStatus() {
+        // ヘルス状態を取得
+        try {
+            const healthResponse = await fetch('/health');
+            const healthData = await healthResponse.json();
+            
+            const tierStatusDiv = document.getElementById('tier-status');
+            const specialLLMDiv = document.getElementById('special-llm-status');
+            
+            // 5層LLMシステム状態
+            const tierInfo = [
+                { name: 'Tier 0 (Qwen3 Coder) - コラボレーション統合', healthy: healthData.details.collaborative_pipeline !== false, usage: '25%' },
+                { name: 'Tier 1 (Gemini Flash)', healthy: healthData.details.gemini_2_5_flash, usage: '45%' },
+                { name: 'Tier 2 (Claude Sonnet)', healthy: healthData.details.claude_sonnet, usage: '25%' },
+                { name: 'Tier 3 (GPT-4o)', healthy: healthData.details.gpt4o, usage: '5%' }
+            ];
 
-        let html = tierInfo.map(tier => `
-            <div class="tier-indicator">
-                <div class="tier-label">${tier.name} - ${tier.model}</div>
-                <div>
-                    <span class="status-indicator status-${tier.status === 'active' ? 'healthy' : 'error'}"></span>
-                    <span class="metric-value">${tier.usage}</span>
+            let html = tierInfo.map(tier => `
+                <div class="tier-indicator">
+                    <div class="tier-label">${tier.name}</div>
+                    <div>
+                        <span class="status-dot status-${tier.healthy ? 'healthy' : 'error'}"></span>
+                        <span class="metric-value">${tier.usage}</span>
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `).join('');
 
-        tierStatusDiv.innerHTML = html;
+            tierStatusDiv.innerHTML = html;
+
+            // 特殊LLMシステム状態
+            const specialLLMInfo = [
+                { name: 'Qwen3 Coder (単体)', healthy: healthData.details.qwen3_coder, status: 'OpenRouter接続問題' },
+                { name: 'Collaborative Pipeline', healthy: true, status: '正常稼働' },
+                { name: 'Hybrid Task Router', healthy: true, status: '自動振り分け' },
+                { name: 'Auto Log Detection', healthy: true, status: 'Claude Code統合' }
+            ];
+
+            let specialHTML = specialLLMInfo.map(special => `
+                <div class="tier-indicator">
+                    <div class="tier-label">${special.name}</div>
+                    <div>
+                        <span class="status-dot status-${special.healthy ? 'healthy' : 'error'}"></span>
+                        <small class="text-muted">${special.status}</small>
+                    </div>
+                </div>
+            `).join('');
+
+            specialLLMDiv.innerHTML = specialHTML;
+
+        } catch (error) {
+            console.error('ステータス更新エラー:', error);
+        }
     }
 
     updateRecentActivity() {
@@ -923,6 +987,614 @@ class ITTroubleshootingApp {
             .replace(/\n/g, '<br>')
             .replace(/```([\s\S]*?)```/g, '<pre class="code-block">$1</pre>')
             .replace(/`([^`]+)`/g, '<code>$1</code>');
+    }
+
+    /**
+     * ログコンテンツかどうかを判定（Claude Code に問い合わせ）
+     */
+    async isLogContent(text) {
+        // 明らかに短い会話文は除外
+        if (text.length < 30 || this.isObviousConversation(text)) {
+            return false;
+        }
+
+        // 基本的なログパターンがある場合のみClaude Codeに問い合わせ
+        const hasBasicLogIndicators = this.hasBasicLogPatterns(text);
+        if (!hasBasicLogIndicators) {
+            return false;
+        }
+
+        // Claude Code に問い合わせて判定
+        return await this.askClaudeCodeForLogDetection(text);
+    }
+
+    /**
+     * 明らかな会話文かどうかを判定
+     */
+    isObviousConversation(text) {
+        const conversationalPatterns = [
+            /^(こんにちは|お疲れ|よろしく|ありがとう|すみません)/i,
+            /\?(\s|$)/,  // 疑問符
+            /^(how|what|why|when|where|can you|could you|please)/i,
+            /ですか？|でしょうか？/,
+            /^(はい|いいえ|そうです)[\s。]/,
+        ];
+        
+        return conversationalPatterns.some(pattern => pattern.test(text));
+    }
+
+    /**
+     * 基本的なログパターンがあるかチェック
+     */
+    hasBasicLogPatterns(text) {
+        const basicPatterns = [
+            /\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}/, // タイムスタンプ
+            /\d{2}:\d{2}:\d{2}/, // 時刻
+            /(ERROR|WARN|INFO|DEBUG|FATAL)/i, // ログレベル
+            /(failed|error|exception|stack)/i, // エラー系キーワード
+            /(systemctl|service|httpd|nginx|mysql|postgresql)/i, // システム関連
+            /\d+\.\d+\.\d+\.\d+/, // IP
+            /^\s*at\s+.*:\d+/m, // スタックトレース風
+        ];
+        
+        return basicPatterns.some(pattern => pattern.test(text));
+    }
+
+    /**
+     * Claude Code にログ判定を問い合わせ
+     */
+    async askClaudeCodeForLogDetection(text) {
+        try {
+            const prompt = `以下のテキストがログファイルやシステムログの内容かどうかを判定してください。
+
+テキスト:
+"""
+${text.substring(0, 500)}...
+"""
+
+以下の条件を満たす場合のみ「YES」と回答してください：
+1. システムログ、アプリケーションログ、エラーログのいずれかである
+2. 実際のサーバーやシステムから出力された形跡がある
+3. 会話文、質問、説明文ではない
+
+判定結果を「YES」または「NO」の1文字で回答してください。`;
+
+            const response = await fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    task_type: 'general', // Gemini Flashを使用（確実に動作）
+                    options: {
+                        temperature: 0.1, // 確実性重視
+                        max_tokens: 10    // 短い回答
+                    }
+                })
+            });
+
+            const result = await response.json();
+            
+            if (response.ok && result.response) {
+                return result.response.trim().toUpperCase().includes('YES');
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Claude Code log detection error:', error);
+            // フォールバックとして基本判定を使用
+            return this.fallbackLogDetection(text);
+        }
+    }
+
+    /**
+     * フォールバック用のシンプルなログ判定
+     */
+    fallbackLogDetection(text) {
+        const strongIndicators = [
+            /\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}[.,]\d{3}/, // 精密タイムスタンプ
+            /^\s*at\s+[\w$.]+\([\w$.]+:\d+:\d+\)$/m, // スタックトレース
+            /\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\w+\s+(kernel|systemd|sshd)/i, // syslog
+        ];
+        
+        return strongIndicators.some(pattern => pattern.test(text));
+    }
+
+
+    /**
+     * 複雑な質問かどうかを判定
+     */
+    isComplexQuestion(message) {
+        // 単純な内容をこのシステムに聞くことは少ないという前提で、ほとんどを複雑と判定
+        const simplePatterns = [
+            /^(こんにちは|お疲れ|ありがとう|はい|いいえ)[\s。]*$/,
+            /^.{1,10}$/, // 10文字以下の短いメッセージ
+        ];
+        
+        return !simplePatterns.some(pattern => pattern.test(message.trim()));
+    }
+
+    /**
+     * マルチTier壁打ちを実行
+     */
+    async performMultiTierWallBounce(message, deepAnalysisRequest, loadingId) {
+        try {
+            // 壁打ち対象のTierを決定
+            const tiers = await this.selectWallBounceTiers(deepAnalysisRequest.intensityLevel);
+            
+            this.removeChatMessage(loadingId);
+            this.addChatMessage(`🎯 ${tiers.length}つのTierで並行解析を開始します...`, 'system');
+            
+            // 並行してすべてのTierで処理
+            const promises = tiers.map(async (tier, index) => {
+                const progressId = this.addChatMessage(`${tier.icon} ${tier.name}: 処理中...`, 'system', true);
+                
+                try {
+                    const result = await this.executeOnTier(message, tier);
+                    this.removeChatMessage(progressId);
+                    
+                    return {
+                        tier: tier,
+                        result: result,
+                        order: index
+                    };
+                } catch (error) {
+                    this.removeChatMessage(progressId);
+                    return {
+                        tier: tier,
+                        error: error.message,
+                        order: index
+                    };
+                }
+            });
+
+            // すべての結果を待つ
+            const results = await Promise.all(promises);
+            
+            // 結果を順番に表示
+            results
+                .filter(r => !r.error)
+                .forEach((r, index) => {
+                    this.addChatMessage(`\n**${r.tier.name}からの洞察:**\n${r.result}`, 'system');
+                });
+
+            // エラーがあった場合は報告
+            const errors = results.filter(r => r.error);
+            if (errors.length > 0) {
+                this.addChatMessage(`⚠️ ${errors.length}個のTierでエラーが発生しましたが、他のTierから十分な洞察を得られました。`, 'system');
+            }
+
+            // 壁打ち完了メッセージ
+            const successCount = results.length - errors.length;
+            const tierNames = results.filter(r => !r.error).map(r => r.tier.name).join(', ');
+            
+            this.addChatMessage(`✨ マルチTier分析が完了しました。${successCount}つの異なる観点からの洞察をお届けしました。\n\n📊 **参加AI**: ${tierNames}\n\n各AIの特性を活かした多角的な分析により、包括的な洞察を提供いたします。`, 'system');
+
+        } catch (error) {
+            console.error('マルチTier壁打ちエラー:', error);
+            this.removeChatMessage(loadingId);
+            this.addChatMessage(`❌ マルチTier分析でエラーが発生しました: ${error.message}`, 'system');
+        }
+    }
+
+    /**
+     * 壁打ち対象Tierを選択
+     */
+    async selectWallBounceTiers(intensityLevel) {
+        const healthResponse = await fetch('/health');
+        const healthData = await healthResponse.json();
+        
+        const availableTiers = [
+            { name: 'GPT-4o (Tier 3)', taskType: 'critical', icon: '🧠', available: healthData.details.gpt4o, priority: 4 },
+            { name: 'Claude Sonnet (Tier 2)', taskType: 'premium', icon: '🎭', available: healthData.details.claude_sonnet, priority: 3 },
+            { name: 'Gemini Pro Exp (Tier 1+)', taskType: 'complex_analysis', icon: '💎', available: healthData.details.gemini_pro_exp, priority: 2 },
+            { name: 'Gemini Flash (Tier 1)', taskType: 'general', icon: '⚡', available: healthData.details.gemini_2_5_flash, priority: 1 },
+            { name: 'Collaborative Coding (Tier 0)', taskType: 'coding', icon: '👥', available: true, priority: 0 }, // コラボレーションパイプライン
+        ].filter(tier => tier.available);
+
+        // 強度レベルに応じて選択
+        switch (intensityLevel) {
+            case 'critical':
+                // 全Tier使用（最大5つの異なる視点）
+                return availableTiers.slice(0, 4); 
+            case 'premium':
+                // 上位3Tier使用（バランスの良い多角的分析）
+                return availableTiers.slice(0, 3);
+            case 'standard':
+                // 上位2Tier + コラボレーションTier（効率的な多視点）
+                return [...availableTiers.slice(0, 2), availableTiers.find(t => t.priority === 0)].filter(Boolean);
+            default:
+                // デフォルトで異なるTier 3つ（高・中・低レベルの視点）
+                return [
+                    availableTiers.find(t => t.priority >= 3),
+                    availableTiers.find(t => t.priority >= 1 && t.priority < 3), 
+                    availableTiers.find(t => t.priority === 0)
+                ].filter(Boolean);
+        }
+    }
+
+    /**
+     * 特定のTierで処理を実行
+     */
+    async executeOnTier(message, tier) {
+        const response = await fetch('/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                prompt: message,
+                task_type: tier.taskType,
+                options: {
+                    temperature: 0.7,
+                    max_tokens: 1500
+                }
+            })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || `${tier.name}での処理に失敗しました`);
+        }
+
+        return result.response;
+    }
+
+    /**
+     * 自動ログ解析を実行（インテリジェントフォールバック付き）
+     */
+    async performAutoLogAnalysis(logContent, userMessage = '') {
+        const analysisMethod = await this.selectOptimalAnalysisMethod(logContent, userMessage);
+        
+        try {
+            let result;
+            
+            if (analysisMethod === 'advanced') {
+                // 高度なログ解析APIを使用
+                result = await this.performAdvancedLogAnalysis(logContent);
+            } else {
+                // LLM直接解析（フォールバック）
+                result = await this.performDirectLLMAnalysis(logContent, analysisMethod);
+            }
+
+            if (result) {
+                this.displayAutoLogAnalysisResult(result);
+                
+                // ログ解析タブに切り替えて結果も表示
+                this.setActiveTab('log-analysis-tab');
+                if (result.diagnosis) {
+                    this.displayLogAnalysisResult({ diagnosis: result });
+                }
+            }
+        } catch (error) {
+            console.error('自動ログ解析エラー:', error);
+            this.addChatMessage(`❌ ログ解析エラー: ${error.message}`, 'system');
+        }
+    }
+
+    /**
+     * 最適な解析方法を選択（深い洞察要求を考慮）
+     */
+    async selectOptimalAnalysisMethod(logContent, userMessage = '') {
+        // ユーザーからの深い分析要求を検出
+        const deepAnalysisRequest = this.detectDeepAnalysisRequest(userMessage);
+        
+        // ログの複雑さを評価
+        const complexity = this.evaluateLogComplexity(logContent);
+        
+        // システム健康状態を確認
+        try {
+            const healthResponse = await fetch('/health');
+            const healthData = await healthResponse.json();
+            
+            // 深い分析が要求された場合は強制的に上位Tierを使用
+            if (deepAnalysisRequest.isDeepAnalysis) {
+                return this.selectHighTierModel(healthData, deepAnalysisRequest.intensityLevel);
+            }
+            
+            // 高度なログ解析システムが利用可能かチェック
+            if (complexity.isAdvanced && healthData.success) {
+                return 'advanced';
+            }
+            
+            // 通常のフォールバック階層を選択
+            return this.selectStandardFallback(healthData);
+            
+        } catch (error) {
+            console.log('ヘルス状態確認失敗、フォールバックを使用:', error);
+            return 'claude_sonnet'; // 安全なフォールバック
+        }
+    }
+
+    /**
+     * 深い分析要求を検出（壁打ち要求含む）
+     */
+    detectDeepAnalysisRequest(userMessage) {
+        const deepAnalysisPatterns = [
+            // 明示的な壁打ち要求 (最高レベル)
+            { pattern: /(壁打ち|複数のAI|複数のモデル|いろんなAI)(で|して|を使って)/, level: 'critical' },
+            { pattern: /(異なる|複数の)(観点|視点|意見|AI)/, level: 'critical' },
+            { pattern: /(全ての|すべての|各)Tier(で|から)/, level: 'critical' },
+            { pattern: /多角的|多面的|多元的/, level: 'critical' },
+            
+            // 深い洞察要求 (最高レベル)
+            { pattern: /(もっと|さらに|より)(深く|詳しく|詳細に)(洞察|分析|解析|調査)/, level: 'critical' },
+            { pattern: /(徹底的|包括的|完全)に(分析|解析|調査)/, level: 'critical' },
+            { pattern: /(根本的|本質的)な(原因|問題)/, level: 'critical' },
+            { pattern: /深掘り|deep dive|in-depth analysis/, level: 'critical' },
+            
+            // 高レベル分析要求
+            { pattern: /(詳しく|詳細に)(教えて|説明|解析)/, level: 'premium' },
+            { pattern: /(専門的|技術的)な(観点|視点|分析)/, level: 'premium' },
+            { pattern: /(複雑|高度)な(分析|解析)/, level: 'premium' },
+            
+            // 中レベル分析要求
+            { pattern: /(もう少し|もうちょっと)(詳しく|詳細)/, level: 'standard' },
+            { pattern: /追加(情報|詳細|分析)/, level: 'standard' },
+        ];
+
+        const userText = userMessage.toLowerCase();
+        
+        for (const { pattern, level } of deepAnalysisPatterns) {
+            if (pattern.test(userText)) {
+                return {
+                    isDeepAnalysis: true,
+                    intensityLevel: level,
+                    matchedPattern: pattern.toString(),
+                    isExplicitWallBounce: /壁打ち|複数のAI|複数のモデル|いろんなAI|異なる.*観点|複数の.*視点|全ての.*Tier|多角的|多面的|多元的/.test(userText)
+                };
+            }
+        }
+
+        return { isDeepAnalysis: false, intensityLevel: 'none', isExplicitWallBounce: false };
+    }
+
+    /**
+     * 高Tierモデルを選択
+     */
+    selectHighTierModel(healthData, intensityLevel) {
+        switch (intensityLevel) {
+            case 'critical':
+                // 最高品質が必要
+                if (healthData.details.gpt4o) return 'gpt4o';
+                if (healthData.details.claude_sonnet) return 'claude_sonnet';
+                if (healthData.details.gemini_pro_exp) return 'gemini_pro_exp';
+                return 'gemini_2_5_flash';
+                
+            case 'premium':
+                // 高品質が必要
+                if (healthData.details.claude_sonnet) return 'claude_sonnet';
+                if (healthData.details.gpt4o) return 'gpt4o';
+                if (healthData.details.gemini_pro_exp) return 'gemini_pro_exp';
+                return 'gemini_2_5_flash';
+                
+            case 'standard':
+                // 標準品質の向上
+                if (healthData.details.claude_sonnet) return 'claude_sonnet';
+                if (healthData.details.gemini_pro_exp) return 'gemini_pro_exp';
+                return 'gemini_2_5_flash';
+                
+            default:
+                return this.selectStandardFallback(healthData);
+        }
+    }
+
+    /**
+     * 標準フォールバック選択
+     */
+    selectStandardFallback(healthData) {
+        if (healthData.details.gemini_pro_exp) {
+            return 'gemini_pro_exp';
+        } else if (healthData.details.claude_sonnet) {
+            return 'claude_sonnet';
+        } else if (healthData.details.gpt4o) {
+            return 'gpt4o';
+        } else {
+            return 'gemini_2_5_flash'; // 最後の手段
+        }
+    }
+
+    /**
+     * ログの複雑さを評価
+     */
+    evaluateLogComplexity(logContent) {
+        const lines = logContent.split('\n').length;
+        const hasStackTrace = /^\s*at\s+.*:\d+/m.test(logContent);
+        const hasMultipleServices = (logContent.match(/\b(httpd|nginx|mysql|postgresql|systemd|docker)\b/gi) || []).length > 1;
+        const hasComplexErrors = /\b(exception|traceback|segfault|core dump|memory leak)\b/i.test(logContent);
+        
+        return {
+            isAdvanced: lines > 10 || hasStackTrace || hasMultipleServices || hasComplexErrors,
+            lines: lines,
+            complexity: hasStackTrace + hasMultipleServices + hasComplexErrors
+        };
+    }
+
+    /**
+     * 高度なログ解析API経由
+     */
+    async performAdvancedLogAnalysis(logContent) {
+        const response = await fetch('/troubleshoot/analyze-advanced', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                raw_logs: logContent,
+                context: {
+                    description: 'チャット経由で投稿されたログの自動解析',
+                    system_type: this.detectSystemType(logContent),
+                    urgency: this.detectUrgency(logContent)
+                }
+            })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || '高度なログ解析に失敗しました');
+        }
+        
+        return result.diagnosis;
+    }
+
+    /**
+     * LLM直接解析（フォールバック）
+     */
+    async performDirectLLMAnalysis(logContent, modelType) {
+        const analysisPrompt = this.buildLogAnalysisPrompt(logContent);
+        
+        const response = await fetch('/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                prompt: analysisPrompt,
+                task_type: this.getTaskTypeForModel(modelType),
+                options: {
+                    temperature: 0.3,
+                    max_tokens: 1500
+                }
+            })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || 'LLM解析に失敗しました');
+        }
+        
+        // 簡易的な診断形式に変換
+        return this.parseDirectAnalysisResult(result.response, modelType);
+    }
+
+    /**
+     * ログ解析用プロンプトを構築
+     */
+    buildLogAnalysisPrompt(logContent) {
+        return `以下のシステムログを解析し、問題を特定して解決策を提示してください。
+
+ログ内容:
+"""
+${logContent.substring(0, 2000)}
+"""
+
+以下の形式で回答してください：
+
+## 🔍 問題の概要
+[主要な問題を簡潔に説明]
+
+## ⚠️ 重要度
+[critical/high/medium/low]
+
+## 🔧 推奨される解決策
+1. [即座に実行すべきアクション]
+2. [追加の調査項目] 
+3. [長期的な対策]
+
+## 📋 確認コマンド
+\`\`\`bash
+[問題を確認するためのコマンド]
+\`\`\`
+
+## 💡 根本原因の推定
+[なぜこの問題が発生したかの分析]`;
+    }
+
+    /**
+     * モデルタイプに適したタスクタイプを取得
+     */
+    getTaskTypeForModel(modelType) {
+        const mapping = {
+            'gemini_pro_exp': 'complex_analysis',
+            'claude_sonnet': 'premium',
+            'gpt4o': 'critical',
+            'gemini_2_5_flash': 'general'
+        };
+        
+        return mapping[modelType] || 'premium';
+    }
+
+    /**
+     * 直接解析結果をパース
+     */
+    parseDirectAnalysisResult(analysisText, modelType) {
+        // 簡易的な構造化データを作成
+        const severityMatch = analysisText.match(/重要度[:\s]*([^\n]+)/i);
+        const severity = severityMatch ? severityMatch[1].trim().toLowerCase() : 'medium';
+        
+        return {
+            primary_issue: {
+                title: `LLM解析結果 (${modelType})`,
+                description: analysisText.substring(0, 200) + '...',
+                severity: severity,
+                confidence_score: modelType === 'gpt4o' ? 0.95 : 0.8
+            },
+            impact_assessment: {
+                user_impact: severity === 'critical' ? 'critical' : 'medium',
+                urgency_level: severity === 'critical' ? 5 : 3
+            },
+            resolution_plan: {
+                immediate_actions: [
+                    { title: 'LLM推奨アクション', description: '詳細はメッセージを確認してください' }
+                ]
+            },
+            analysis_method: `Direct LLM Analysis (${modelType})`,
+            full_analysis: analysisText
+        };
+    }
+
+    /**
+     * システムタイプを検出
+     */
+    detectSystemType(logContent) {
+        if (/httpd|apache|nginx/i.test(logContent)) return 'web_server';
+        if (/postgresql|mysql|database/i.test(logContent)) return 'database';
+        if (/systemd|systemctl|service/i.test(logContent)) return 'system_service';
+        if (/docker|container|k8s|kubernetes/i.test(logContent)) return 'container';
+        return 'linux';
+    }
+
+    /**
+     * 緊急度を検出
+     */
+    detectUrgency(logContent) {
+        const criticalPatterns = /FATAL|CRITICAL|EMERGENCY|failed to start|connection refused|out of memory/i;
+        const highPatterns = /ERROR|failed|exception|crash|timeout/i;
+        
+        if (criticalPatterns.test(logContent)) return 'critical';
+        if (highPatterns.test(logContent)) return 'high';
+        return 'medium';
+    }
+
+    /**
+     * チャット内での自動ログ解析結果表示
+     */
+    displayAutoLogAnalysisResult(diagnosis) {
+        let summary;
+        
+        if (diagnosis.full_analysis) {
+            // 直接LLM解析の場合は、フル回答を表示
+            summary = `🔍 **ログ解析完了** (${diagnosis.analysis_method})\n\n`;
+            summary += diagnosis.full_analysis;
+        } else {
+            // 従来の高度解析の場合
+            summary = `🔍 **ログ解析結果**\n\n`;
+            summary += `**主要問題**: ${diagnosis.primary_issue.title}\n`;
+            summary += `**重要度**: ${diagnosis.primary_issue.severity.toUpperCase()}\n`;
+            summary += `**影響**: ${diagnosis.impact_assessment.user_impact}\n\n`;
+            
+            if (diagnosis.resolution_plan.immediate_actions.length > 0) {
+                summary += `**推奨アクション**:\n`;
+                diagnosis.resolution_plan.immediate_actions.slice(0, 3).forEach((action, index) => {
+                    summary += `${index + 1}. ${action.title}\n`;
+                });
+            }
+            
+            summary += `\n詳細は「ログ解析」タブをご確認ください。`;
+        }
+        
+        this.addChatMessage(this.formatResponseText(summary), 'system');
     }
 
     showAlert(message, type = 'info') {

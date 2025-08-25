@@ -211,6 +211,14 @@ body::before {
     background-color: var(--danger-color);
 }
 
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
     .container-fluid {
