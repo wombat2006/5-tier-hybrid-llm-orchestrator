@@ -143,7 +143,7 @@ export class AdvancedLogAnalyzer {
     context: LogAnalysisContext
   ): Promise<ComprehensiveDiagnosis> {
     console.log('[AdvancedLogAnalyzer] 🔍 Starting comprehensive log analysis...');
-    console.log(`[AdvancedLogAnalyzer] Context: ${context.user_description.substring(0, 100)}...`);
+    console.log(`[AdvancedLogAnalyzer] Context: ${(context.user_description || 'No description').substring(0, 100)}...`);
     console.log(`[AdvancedLogAnalyzer] Log size: ${rawLogs.length} characters`);
 
     try {

@@ -42,6 +42,10 @@ import { OpenAIAssistantProvider } from '../services/OpenAIAssistantProvider';
 import { AssistantConfig } from '../types/assistant';
 import RedisLogger, { QueryAnalysisLog } from '../utils/RedisLogger';
 import UpstashRedisLogger from '../utils/UpstashRedisLogger';
+import LogAnalysisService, { LogAnalysisRequest } from '../services/LogAnalysisService';
+import InteractiveTroubleshooter from '../services/InteractiveTroubleshooter';
+import AdvancedLogAnalyzer, { LogAnalysisContext } from '../services/AdvancedLogAnalyzer';
+import SafeExecutionManager from '../services/SafeExecutionManager';
 
 export class LLMOrchestrator {
   private config: SystemConfig;
@@ -65,6 +69,12 @@ export class LLMOrchestrator {
   private qualityGate!: QualityGate;
   private collaborativeConfig!: CollaborativeConfig;
   private activeSessions: Map<string, CodingSession> = new Map();
+  
+  // IT Troubleshooting Services
+  private logAnalysisService!: LogAnalysisService;
+  private interactiveTroubleshooter!: InteractiveTroubleshooter;
+  private advancedLogAnalyzer!: AdvancedLogAnalyzer;
+  private safeExecutionManager!: SafeExecutionManager;
   
   // コスト管理システム
   private costManagement!: CostManagementSystem;
@@ -120,6 +130,9 @@ export class LLMOrchestrator {
     
     // 会話コンテキスト管理システム初期化
     this.initializeConversationManager();
+    
+    // IT Troubleshooting Services 初期化
+    this.initializeITTroubleshootingServices();
     
     // コスト管理は非同期で初期化
     this.initializeCostManagement().catch(error => {
@@ -449,6 +462,26 @@ export class LLMOrchestrator {
       console.log('[LLMOrchestrator] ✅ Conversation Manager initialized with Redis backend');
     } catch (error) {
       console.error('[LLMOrchestrator] ❌ Failed to initialize Conversation Manager:', error);
+      throw error;
+    }
+  }
+
+  private initializeITTroubleshootingServices(): void {
+    console.log('[LLMOrchestrator] 🔧 Initializing IT Troubleshooting Services...');
+    
+    try {
+      this.logAnalysisService = new LogAnalysisService();
+      this.interactiveTroubleshooter = new InteractiveTroubleshooter();
+      this.advancedLogAnalyzer = new AdvancedLogAnalyzer();
+      this.safeExecutionManager = new SafeExecutionManager();
+      
+      console.log('[LLMOrchestrator] ✅ IT Troubleshooting Services initialized:');
+      console.log('   - Log Analysis Service');
+      console.log('   - Interactive Troubleshooter');
+      console.log('   - Advanced Log Analyzer');
+      console.log('   - Safe Execution Manager');
+    } catch (error) {
+      console.error('[LLMOrchestrator] ❌ Failed to initialize IT Troubleshooting Services:', error);
       throw error;
     }
   }
@@ -2336,6 +2369,80 @@ Please address these issues and provide an improved implementation.`;
         details: error instanceof Error ? error.message : 'Unknown error'
       };
     }
+  }
+
+  // ============================================
+  // IT Troubleshooting 統合メソッド
+  // ============================================
+
+  /**
+   * ログ解析リクエストを処理
+   */
+  async processLogAnalysis(request: LogAnalysisRequest): Promise<any> {
+    console.log('[LLMOrchestrator] 🔍 Processing log analysis request...');
+    return await this.logAnalysisService.analyzeLog(request);
+  }
+
+  /**
+   * 高度なログ解析を実行
+   */
+  async processAdvancedLogAnalysis(rawLogs: string, context: LogAnalysisContext): Promise<any> {
+    console.log('[LLMOrchestrator] 🔧 Processing advanced log analysis...');
+    return await this.advancedLogAnalyzer.analyzeUserLogs(rawLogs, context);
+  }
+
+  /**
+   * 対話型トラブルシューティングセッションを開始
+   */
+  async startTroubleshootingSession(problemDescription: string, userId?: string): Promise<any> {
+    console.log('[LLMOrchestrator] 🛠️ Starting troubleshooting session...');
+    return await this.interactiveTroubleshooter.startTroubleshootingSession(problemDescription, userId);
+  }
+
+  /**
+   * トラブルシューティングセッションに回答
+   */
+  async respondToTroubleshootingSession(sessionId: string, userResponse: string): Promise<any> {
+    console.log('[LLMOrchestrator] 💬 Responding to troubleshooting session...');
+    
+    // セッション状態を取得して適切な処理を判定
+    const session = this.interactiveTroubleshooter.getSessionStatus(sessionId);
+    if (!session) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+
+    // 現在はシンプルな診断実行を行う
+    // TODO: 将来的にはより詳細な対話処理を実装
+    return await this.interactiveTroubleshooter.performDiagnosis(sessionId);
+  }
+
+  /**
+   * コマンドの安全性を評価
+   */
+  async assessCommandSafety(command: string, context: any): Promise<any> {
+    console.log('[LLMOrchestrator] 🛡️ Assessing command safety...');
+    return await this.safeExecutionManager.assessCommandSafety(command);
+  }
+
+  /**
+   * IT統合システム統計情報取得
+   */
+  getITSystemStats(): any {
+    return {
+      troubleshooting_services: {
+        log_analysis: !!this.logAnalysisService,
+        interactive_troubleshooter: !!this.interactiveTroubleshooter,
+        advanced_log_analyzer: !!this.advancedLogAnalyzer,
+        safe_execution_manager: !!this.safeExecutionManager
+      },
+      llm_orchestration: {
+        total_models: this.clients.size,
+        tiers_available: [0, 1, 2, 3],
+        collaborative_coding: true,
+        cost_management: !!this.costManagement
+      },
+      integration_status: 'fully_integrated'
+    };
   }
 
   // ============================================

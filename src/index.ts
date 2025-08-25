@@ -697,9 +697,21 @@ app.post('/troubleshoot/analyze-advanced', async (req, res) => {
 
     console.log(`\n🧠 Advanced log analysis requested`);
     console.log(`📊 Log size: ${raw_logs.length} characters`);
-    console.log(`🔍 Context: ${context.user_description?.substring(0, 50)}...`);
+    console.log(`🔍 Context: ${context.description || context.user_description || 'No description'}...`);
 
-    const diagnosis = await advancedLogAnalyzer.analyzeUserLogs(raw_logs, context);
+    // contextを正しい形式に変換
+    const analysisContext: any = {
+      user_description: context.description || context.user_description || 'User provided logs for analysis',
+      environment: context.environment || {},
+      timeline: context.timeline || {},
+      system_info: {
+        error_frequency: context.urgency === 'high' ? 'continuous' : 'intermittent',
+        user_impact: context.urgency === 'high' ? 'critical' : 'minor',
+        services_affected: context.system_type ? [context.system_type] : []
+      }
+    };
+
+    const diagnosis = await advancedLogAnalyzer.analyzeUserLogs(raw_logs, analysisContext);
 
     return res.status(200).json({
       success: true,

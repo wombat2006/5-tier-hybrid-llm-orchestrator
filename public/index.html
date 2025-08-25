@@ -34,6 +34,15 @@
                     </div>
                     <div class="card-body p-0">
                         <div class="list-group list-group-flush">
+                            <button class="list-group-item list-group-item-action active" id="dashboard-tab">
+                                <i class="fas fa-tachometer-alt me-2"></i>統合ダッシュボード
+                            </button>
+                            <button class="list-group-item list-group-item-action" id="llm-generator-tab">
+                                <i class="fas fa-brain me-2"></i>5層LLM生成
+                            </button>
+                            <button class="list-group-item list-group-item-action" id="code-analysis-tab">
+                                <i class="fas fa-code me-2"></i>コード解析・生成
+                            </button>
                             <button class="list-group-item list-group-item-action" id="log-analysis-tab">
                                 <i class="fas fa-file-alt me-2"></i>ログ解析
                             </button>
@@ -69,12 +78,236 @@
 
             <!-- メインコンテンツ -->
             <div class="col-md-9">
-                <!-- ログ解析パネル -->
-                <div id="log-analysis-panel" class="content-panel">
+                <!-- 統合ダッシュボード -->
+                <div id="dashboard-panel" class="content-panel">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-tachometer-alt me-2"></i>統合システムダッシュボード
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="metric-card">
+                                        <div class="metric-icon bg-success">
+                                            <i class="fas fa-brain"></i>
+                                        </div>
+                                        <div class="metric-info">
+                                            <h3 id="llm-requests">-</h3>
+                                            <p>LLM生成リクエスト</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="metric-card">
+                                        <div class="metric-icon bg-warning">
+                                            <i class="fas fa-tools"></i>
+                                        </div>
+                                        <div class="metric-info">
+                                            <h3 id="troubleshoot-sessions">-</h3>
+                                            <p>トラブルシューティング</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="metric-card">
+                                        <div class="metric-icon bg-info">
+                                            <i class="fas fa-code"></i>
+                                        </div>
+                                        <div class="metric-info">
+                                            <h3 id="code-analyses">-</h3>
+                                            <p>コード解析・生成</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">5層LLMシステム状態</div>
+                                        <div class="card-body" id="tier-status">
+                                            <div class="tier-indicator">
+                                                <span class="tier-label">Tier 0 (Qwen3 Coder)</span>
+                                                <span class="status-dot status-healthy"></span>
+                                            </div>
+                                            <div class="tier-indicator">
+                                                <span class="tier-label">Tier 1 (Gemini Flash)</span>
+                                                <span class="status-dot status-healthy"></span>
+                                            </div>
+                                            <div class="tier-indicator">
+                                                <span class="tier-label">Tier 2 (Claude Sonnet)</span>
+                                                <span class="status-dot status-healthy"></span>
+                                            </div>
+                                            <div class="tier-indicator">
+                                                <span class="tier-label">Tier 3 (GPT-4o)</span>
+                                                <span class="status-dot status-healthy"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">最近のアクティビティ</div>
+                                        <div class="card-body" id="recent-activity">
+                                            <div class="activity-item">
+                                                <i class="fas fa-brain text-success"></i>
+                                                <span>LLM生成リクエスト処理完了</span>
+                                                <small class="text-muted">2分前</small>
+                                            </div>
+                                            <div class="activity-item">
+                                                <i class="fas fa-code text-info"></i>
+                                                <span>コード解析完了</span>
+                                                <small class="text-muted">5分前</small>
+                                            </div>
+                                            <div class="activity-item">
+                                                <i class="fas fa-tools text-warning"></i>
+                                                <span>ログ解析完了</span>
+                                                <small class="text-muted">8分前</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5層LLM生成パネル -->
+                <div id="llm-generator-panel" class="content-panel" style="display: none;">
                     <div class="card">
                         <div class="card-header bg-success text-white">
                             <h5 class="mb-0">
-                                <i class="fas fa-search me-2"></i>ログ解析システム
+                                <i class="fas fa-brain me-2"></i>5層LLMインテリジェント生成システム
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label for="llm-prompt" class="form-label">プロンプト入力</label>
+                                        <textarea class="form-control" id="llm-prompt" rows="8" placeholder="質問、コーディング要求、分析依頼などを入力してください..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="task-type" class="form-label">タスクタイプ</label>
+                                        <select class="form-select" id="task-type">
+                                            <option value="auto">自動選択（推奨）</option>
+                                            <option value="coding">コーディング</option>
+                                            <option value="general">一般的な質問</option>
+                                            <option value="complex_analysis">複雑な分析</option>
+                                            <option value="premium">プレミアム品質</option>
+                                            <option value="critical">最高品質・緊急</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-success" id="generate-llm-btn">
+                                        <i class="fas fa-magic me-2"></i>LLM生成開始
+                                    </button>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-header">生成設定</div>
+                                        <div class="card-body">
+                                            <div class="mb-2">
+                                                <label class="form-label">Tier強制指定</label>
+                                                <select class="form-select form-select-sm" id="force-tier">
+                                                    <option value="">自動選択</option>
+                                                    <option value="0">Tier 0 (高速)</option>
+                                                    <option value="1">Tier 1 (標準)</option>
+                                                    <option value="2">Tier 2 (高品質)</option>
+                                                    <option value="3">Tier 3 (最高品質)</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-check-label">
+                                                    <input type="checkbox" class="form-check-input" id="stream-output">
+                                                    ストリーミング出力
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label class="form-label">生成結果</label>
+                                        <div id="llm-generation-result" class="analysis-result">
+                                            <div class="text-muted text-center p-4">
+                                                プロンプトを入力してLLM生成を開始してください
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- コード解析・生成パネル -->
+                <div id="code-analysis-panel" class="content-panel" style="display: none;">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-code me-2"></i>コード解析・生成システム
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="code-input" class="form-label">コード入力</label>
+                                        <textarea class="form-control" id="code-input" rows="15" placeholder="解析したいコードを入力するか、生成したい機能を記述してください..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="code-action" class="form-label">アクション</label>
+                                        <select class="form-select" id="code-action">
+                                            <option value="analyze">コード解析</option>
+                                            <option value="generate">コード生成</option>
+                                            <option value="review">コードレビュー</option>
+                                            <option value="optimize">最適化提案</option>
+                                            <option value="debug">デバッグ支援</option>
+                                            <option value="test">テスト生成</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="code-language" class="form-label">言語</label>
+                                        <select class="form-select" id="code-language">
+                                            <option value="auto">自動検出</option>
+                                            <option value="javascript">JavaScript</option>
+                                            <option value="typescript">TypeScript</option>
+                                            <option value="python">Python</option>
+                                            <option value="java">Java</option>
+                                            <option value="cpp">C++</option>
+                                            <option value="csharp">C#</option>
+                                            <option value="go">Go</option>
+                                            <option value="rust">Rust</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-info" id="process-code-btn">
+                                        <i class="fas fa-play me-2"></i>コード処理実行
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">処理結果</label>
+                                        <div id="code-analysis-result" class="analysis-result">
+                                            <div class="text-muted text-center p-4">
+                                                コードを入力してアクションを選択してください
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ログ解析パネル -->
+                <div id="log-analysis-panel" class="content-panel" style="display: none;">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">
+                                <i class="fas fa-search me-2"></i>5層LLM統合ログ解析システム
                             </h5>
                         </div>
                         <div class="card-body">
